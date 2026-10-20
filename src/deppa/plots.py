@@ -236,3 +236,63 @@ def spreads_solar(monthly: pd.DataFrame, slope: float, intercept: float, out: Pa
     fig.tight_layout()
     fig.savefig(out, dpi=160)
     plt.close(fig)
+
+
+# --- v0.4: merit-order dispatch -----------------------------------------------------------------
+
+FUEL_COLOR = {"lignite": "#8a5a2b", "hard_coal": "#52514e", "gas": "#2a78d6"}
+FUEL_LABEL = {"lignite": "Lignite", "hard_coal": "Hard coal", "gas": "Gas"}
+
+
+def dispatch_daily(res: pd.DataFrame, out: Path) -> None:
+    """Daily mean day-ahead price: actual vs merit-order model."""
+    day = res["ts_utc"].dt.tz_convert("Europe/Berlin").dt.tz_localize(None).dt.normalize()
+    d = res.groupby(day)[["price", "model_price"]].mean()
+    fig, ax = plt.subplots(figsize=(8, 4.2))
+    ax.plot(d.index, d["price"], color=INK2, linewidth=1.1, label="Actual day-ahead")
+    ax.plot(d.index, d["model_price"], color=COLOR["wind_onshore"], linewidth=1.1, label="Merit-order model")
+    ax.axvline(pd.Timestamp("2024-01-01"), color=GRID, linewidth=1)
+    ax.text(pd.Timestamp("2024-01-10"), ax.get_ylim()[1] * 0.95, "out of sample →", fontsize=8, color=INK2, va="top")
+    _style(ax, "Daily mean price, DE-LU: actual vs merit-order model (calibrated on 2023)", "EUR/MWh")
+    ax.legend(frameon=False, ncols=2, loc="upper left", bbox_to_anchor=(0, -0.08), labelcolor=INK)
+    fig.tight_layout()
+    fig.savefig(out, dpi=160)
+    plt.close(fig)
+
+
+def dispatch_duration(res: pd.DataFrame, out: Path) -> None:
+    """Price duration curves (hours sorted by price) per year, actual dashed and model solid."""
+    shades = {2023: "#9ec5f0", 2024: "#2a78d6", 2025: "#123f7a"}
+    fig, ax = plt.subplots(figsize=(8, 4.2))
+    for y, g in res.groupby("year"):
+        share = np.linspace(0, 1, len(g))
+        ax.plot(share, np.sort(g["price"].to_numpy())[::-1], color=shades.get(y, INK2), linestyle=(0, (4, 3)), linewidth=1.3)
+        ax.plot(share, np.sort(g["model_price"].to_numpy())[::-1], color=shades.get(y, INK2), linewidth=1.8, label=str(y))
+    ax.axhline(0, color=INK2, linewidth=0.8)
+    ax.set_ylim(-150, 400)
+    ax.xaxis.set_major_formatter(matplotlib.ticker.PercentFormatter(1.0))
+    _style(ax, "Price duration curves: model (solid) vs actual (dashed)", "EUR/MWh")
+    ax.set_xlabel("share of hours in the year", color=INK2)
+    ax.legend(frameon=False, ncols=3, loc="upper right", labelcolor=INK)
+    fig.tight_layout()
+    fig.savefig(out, dpi=160)
+    plt.close(fig)
+
+
+def dispatch_generation(gen: pd.DataFrame, out: Path) -> None:
+    """Annual thermal generation by fuel: actual (hatched) vs model."""
+    years = sorted(gen["year"].unique())
+    fig, ax = plt.subplots(figsize=(8, 4.2))
+    width = 0.13
+    x = np.arange(len(years))
+    for i, f in enumerate(("lignite", "hard_coal", "gas")):
+        g = gen[gen["fuel"] == f].set_index("year").loc[years]
+        ax.bar(x + (2 * i - 2.5) * width, g["actual_twh"], width * 0.95, color="none", edgecolor=FUEL_COLOR[f],
+               hatch="///", linewidth=1, label=f"{FUEL_LABEL[f]}, actual")
+        ax.bar(x + (2 * i - 1.5) * width, g["model_twh"], width * 0.95, color=FUEL_COLOR[f], label=f"{FUEL_LABEL[f]}, model")
+    ax.set_xticks(x, [str(y) for y in years])
+    _style(ax, "Thermal generation by fuel: actual vs merit-order model", "TWh")
+    ax.legend(frameon=False, ncols=3, loc="upper left", bbox_to_anchor=(0, -0.08), fontsize=8, labelcolor=INK)
+    fig.tight_layout()
+    fig.savefig(out, dpi=160)
+    plt.close(fig)

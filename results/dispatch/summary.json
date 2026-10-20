@@ -1,0 +1,140 @@
+{
+  "calibration": {
+    "year": 2023,
+    "lignite_fuel_eur_mwh_th": 4.0,
+    "must_run_quantile": 0.15,
+    "mae": 20.94319025911816
+  },
+  "assumptions": {
+    "lignite": {
+      "eta_best": 0.43,
+      "eta_worst": 0.31,
+      "ef_t_per_mwh_th": 0.364,
+      "vom": 4.0
+    },
+    "hard_coal": {
+      "eta_best": 0.46,
+      "eta_worst": 0.34,
+      "ef_t_per_mwh_th": 0.338,
+      "vom": 4.0
+    },
+    "gas": {
+      "eta_best": 0.6,
+      "eta_worst": 0.33,
+      "ef_t_per_mwh_th": 0.202,
+      "vom": 2.0
+    },
+    "blocks_per_fuel": 10
+  },
+  "metrics": [
+    {
+      "year": 2023,
+      "actual_mean": 95.175,
+      "model_mean": 92.897,
+      "mae": 20.943,
+      "rmse": 32.324,
+      "corr_hourly": 0.744,
+      "corr_daily": 0.85,
+      "mae_without_negative_hours": 20.402,
+      "negative_hours": 301,
+      "hours_above_200": 112,
+      "sample": "calibration"
+    },
+    {
+      "year": 2024,
+      "actual_mean": 78.512,
+      "model_mean": 77.405,
+      "mae": 20.309,
+      "rmse": 37.307,
+      "corr_hourly": 0.713,
+      "corr_daily": 0.822,
+      "mae_without_negative_hours": 19.787,
+      "negative_hours": 457,
+      "hours_above_200": 129,
+      "sample": "out of sample"
+    },
+    {
+      "year": 2025,
+      "actual_mean": 89.322,
+      "model_mean": 83.68,
+      "mae": 22.588,
+      "rmse": 36.235,
+      "corr_hourly": 0.727,
+      "corr_daily": 0.831,
+      "mae_without_negative_hours": 21.642,
+      "negative_hours": 573,
+      "hours_above_200": 162,
+      "sample": "out of sample"
+    }
+  ],
+  "generation_by_fuel": [
+    {
+      "year": 2023,
+      "fuel": "lignite",
+      "actual_twh": 77.84,
+      "model_twh": 87.47,
+      "error_pct": 12.36
+    },
+    {
+      "year": 2023,
+      "fuel": "hard_coal",
+      "actual_twh": 39.75,
+      "model_twh": 39.11,
+      "error_pct": -1.6
+    },
+    {
+      "year": 2023,
+      "fuel": "gas",
+      "actual_twh": 51.17,
+      "model_twh": 43.59,
+      "error_pct": -14.82
+    },
+    {
+      "year": 2024,
+      "fuel": "lignite",
+      "actual_twh": 70.99,
+      "model_twh": 81.61,
+      "error_pct": 14.96
+    },
+    {
+      "year": 2024,
+      "fuel": "hard_coal",
+      "actual_twh": 27.34,
+      "model_twh": 25.45,
+      "error_pct": -6.9
+    },
+    {
+      "year": 2024,
+      "fuel": "gas",
+      "actual_twh": 56.98,
+      "model_twh": 49.72,
+      "error_pct": -12.75
+    },
+    {
+      "year": 2025,
+      "fuel": "lignite",
+      "actual_twh": 67.17,
+      "model_twh": 75.08,
+      "error_pct": 11.78
+    },
+    {
+      "year": 2025,
+      "fuel": "hard_coal",
+      "actual_twh": 28.16,
+      "model_twh": 29.44,
+      "error_pct": 4.55
+    },
+    {
+      "year": 2025,
+      "fuel": "gas",
+      "actual_twh": 60.61,
+      "model_twh": 53.5,
+      "error_pct": -11.74
+    }
+  ],
+  "net_imports_and_statistical_difference_twh": {
+    "2023": 21.1,
+    "2024": 44.5,
+    "2025": 44.1
+  }
+}

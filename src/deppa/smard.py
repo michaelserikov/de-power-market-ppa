@@ -28,6 +28,20 @@ SERIES = {
     "load": 410,            # grid load, MWh
 }
 
+# Generation by source and pumped-storage consumption (v0.4 dispatch model), MWh per hour.
+FUEL_SERIES = {
+    "lignite": 1223,
+    "nuclear": 1224,        # ends 15 April 2023
+    "hydro": 1226,
+    "other_conv": 1227,     # oil, waste and other conventional
+    "other_ren": 1228,
+    "biomass": 4066,
+    "hard_coal": 4069,
+    "gas": 4071,
+    "pumped_gen": 4070,
+    "pumped_cons": 4387,
+}
+
 _session = requests.Session()
 _session.headers["User-Agent"] = "de-power-market-ppa (research; github.com/michaelserikov/de-power-market-ppa)"
 
@@ -62,7 +76,7 @@ def load_series(name: str, start: str, end: str, cache_dir: Path, region: str = 
 
     A chunk is cached once it lies fully in the past, so a rerun downloads nothing new.
     """
-    filter_id = SERIES[name]
+    filter_id = {**SERIES, **FUEL_SERIES}[name]
     start_ts = pd.Timestamp(start, tz="UTC")
     end_ts = pd.Timestamp(end, tz="UTC") + pd.Timedelta(days=1)
     week = pd.Timedelta(days=7)
@@ -94,3 +108,12 @@ def load_all(start: str, end: str, cache_dir: Path) -> pd.DataFrame:
         if name != "price":
             out = out.merge(load_series(name, start, end, cache_dir), on="ts_utc", how="left")
     return out
+
+
+def load_fuels(start: str, end: str, cache_dir: Path) -> pd.DataFrame:
+    """Generation by source (FUEL_SERIES) joined on the hour; a missing hour of a source counts as zero."""
+    out = None
+    for name in FUEL_SERIES:
+        df = load_series(name, start, end, cache_dir)
+        out = df if out is None else out.merge(df, on="ts_utc", how="outer")
+    return out.sort_values("ts_utc").fillna(0.0).reset_index(drop=True)

@@ -1,7 +1,7 @@
 [project]
 name = "deppa"
-version = "0.3.0"
-description = "German day-ahead power market: capture prices, PPA valuation, market risk, model validation and battery arbitrage from SMARD data"
+version = "0.4.0"
+description = "German day-ahead power market: merit-order price model, capture prices, PPA valuation, market risk, model validation and battery arbitrage from SMARD data"
 requires-python = ">=3.11"
 dependencies = [
     "pandas>=2.2",
@@ -11,6 +11,7 @@ dependencies = [
     "requests>=2.31",
     "pyarrow>=15",
     "scipy>=1.13",
+    "openpyxl>=3.1",
 ]
 
 [project.optional-dependencies]

@@ -1,0 +1,4 @@
+year,actual_mean,model_mean,mae,rmse,corr_hourly,corr_daily,mae_without_negative_hours,negative_hours,hours_above_200,sample
+2023,95.175,92.897,20.943,32.324,0.744,0.850,20.402,301,112,calibration
+2024,78.512,77.405,20.309,37.307,0.713,0.822,19.787,457,129,out of sample
+2025,89.322,83.680,22.588,36.235,0.727,0.831,21.642,573,162,out of sample

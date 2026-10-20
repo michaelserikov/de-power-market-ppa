@@ -1,4 +1,4 @@
-# German power market: capture prices, PPA valuation, model validation and battery arbitrage (v0.3)
+# German power market: merit-order price model, capture prices, PPA valuation, model validation and battery arbitrage (v0.4)
 
 What is a MWh of wind or solar power actually worth on the German day-ahead market, and what does that mean for a power purchase agreement (PPA)? This project answers that from hourly market data for 2023 to 2025 (bidding zone DE-LU, 26,304 hours, no gaps): capture prices and capture rates, the cost of negative prices, the fair strike of a pay-as-produced PPA, the shape cost of a baseload PPA and the month-to-month risk an offtaker carries.
 
@@ -12,6 +12,11 @@ What is a MWh of wind or solar power actually worth on the German day-ahead mark
 - A Black-76 model for a 12-month PPA price floor (60 EUR/MWh on the monthly average price) was validated like a bank's front-office model: independent Monte Carlo replication (30 prices, all within 1.7 standard errors), analytic Greeks against finite differences (relative error 3e-8), a challenger model calibrated on daily prices and a sensitivity ladder.
 - Main valuation finding: the model ignores that the floor settles on a monthly average and overstates its value by 11.7% under its own assumptions. A two-factor challenger points the same way (Black-76 32% higher), but its level/noise split is not identified from three years of spot data, so the volatility input needs market data (EEX futures or options).
 - One-day VaR(99%) and ES(97.5%) of a PPA offtaker were backtested over 731 days (Kupiec, Christoffersen, Basel traffic light, ES exceedance test). Normal-EWMA and GARCH(1,1)-t models land in the red zone (19-30 exceptions against 7.3 expected), with solar exceptions almost all on weekends and holidays; historical simulation passes coverage, and conditioning it on the day type fixes the wind position but not solar.
+
+**v0.4: merit-order dispatch model**
+- A merit-order model of the German lignite, hard-coal and gas fleet, driven by monthly fuel and carbon prices from open sources (World Bank, ECB, EEX auctions), reproduces the hourly day-ahead price with a correlation of 0.71 to 0.74 (daily means 0.82 to 0.85) and a mean absolute error of 20 to 23 EUR/MWh. Two parameters are calibrated on 2023 only; 2024 and 2025 are out of sample, with errors of the same size as in the calibration year.
+- The model dispatches hard coal within 7% of the observed annual output, but runs lignite 12 to 15% too much and gas 12 to 15% too little: part of the gas fleet runs for heat or system services regardless of the price, which a cost-only merit order does not see.
+- What it misses is the tails: it cannot produce negative prices or scarcity spikes, and in 12 to 13% of hours its price drops to zero where actual prices fall gradually (4 to 8% of hours at or below zero). These hours are set by exports, flexibility and bidding behaviour, the next things to model.
 
 **v0.3: battery day-ahead arbitrage**
 - A 1 MW battery scheduled optimally on each day's day-ahead prices (88% round trip, 10 EUR/MWh degradation cost) earned 52, 63 and 72 thousand EUR per MW in 2023, 2024 and 2025 with 2 hours of storage, and 29 to 40 (1 hour) or 79 to 114 (4 hours) thousand EUR per MW. Revenue grew by about 40% in two years for every duration.
@@ -75,6 +80,34 @@ Method, findings with severity and recommendations: [reports/model_validation_re
 
 **Methods in short.** Black-76 with analytic Greeks; antithetic Monte Carlo; implied volatility by root finding; a two-factor arithmetic price model (Schwartz-Smith type split into a random-walk level and an AR(1) deviation, weekday effects) priced in closed form (Bachelier on the monthly average) and by simulation. VaR/ES by historical simulation, normal with EWMA volatility (RiskMetrics, lambda 0.94) and GARCH(1,1) with Student-t innovations (maximum likelihood, own implementation), on a 365-day rolling window. Backtests: Kupiec proportion of failures, Christoffersen independence and conditional coverage, Basel traffic light from binomial probabilities, and a bootstrap ES exceedance test.
 
+## v0.4: merit-order dispatch model
+
+![Daily prices](figures/dispatch_daily_prices.png)
+
+| Year | Sample | Actual mean | Model mean | MAE | RMSE | Correlation, hourly | Correlation, daily |
+|---|---|---|---|---|---|---|---|
+| 2023 | calibration | 95.2 | 92.9 | 20.9 | 32.3 | 0.74 | 0.85 |
+| 2024 | out of sample | 78.5 | 77.4 | 20.3 | 37.3 | 0.71 | 0.82 |
+| 2025 | out of sample | 89.3 | 83.7 | 22.6 | 36.2 | 0.73 | 0.83 |
+
+Prices in EUR/MWh. Hours with prices above 200 EUR/MWh: 112, 129 and 162; hours with negative prices: 301, 457 and 573.
+
+![Price duration](figures/dispatch_price_duration.png)
+
+![Generation by fuel](figures/dispatch_generation.png)
+
+| Thermal generation, TWh (model error) | 2023 | 2024 | 2025 |
+|---|---|---|---|
+| Lignite, actual | 77.8 (+12%) | 71.0 (+15%) | 67.2 (+12%) |
+| Hard coal, actual | 39.8 (-2%) | 27.3 (-7%) | 28.2 (+5%) |
+| Gas, actual | 51.2 (-15%) | 57.0 (-13%) | 60.6 (-12%) |
+
+**Method.** Thermal demand per hour is load plus pumped-storage consumption minus wind, solar, hydro, biomass, other renewables, other conventional, nuclear and pumped-storage generation and net imports, all from SMARD; net imports (with any statistical difference between load and generation data, 21 to 45 TWh per year) close the balance, so thermal demand equals observed lignite, hard-coal and gas output and the model decides how it is split between fuels and at what marginal cost. Per fuel and month, available capacity is the maximum observed hourly output and must-run output a quantile of it; the capacity above must-run is cut into ten blocks whose efficiency falls linearly from the best to the worst plants (lignite 43 to 31%, hard coal 46 to 34%, gas 60 to 33%). Marginal cost = (fuel price + emission factor x CO2 price) / efficiency + variable O&M (emission factors 0.364, 0.338 and 0.202 tCO2/MWh thermal; O&M 4, 4 and 2 EUR/MWh). Each hour is dispatched in merit order and the price is the cost of the last block used, which equals the dual of the demand constraint of the hourly economic-dispatch LP (checked against SciPy/HiGHS in the tests); if must-run output alone covers demand the price is zero. Calibrated on 2023 by hourly price MAE over a grid: lignite fuel cost 4 EUR/MWh thermal and must-run at the 15th percentile of monthly output (`results/dispatch/calibration_2023.csv`).
+
+**Fuel and carbon prices** (monthly, `results/dispatch/fuel_prices_monthly.csv`): natural gas Europe (TTF) and South African coal (6000 kcal/kg, the closest open series to the API2 benchmark) from the [World Bank Commodity Price Data](https://www.worldbank.org/en/research/commodity-markets) (CC BY 4.0), converted with the ECB monthly USD/EUR reference rate ([ECB Data Portal](https://data.ecb.europa.eu/)); EU allowances as monthly means of the [EEX primary auction](https://www.eex.com/en/markets/environmental-markets/eu-ets-auctions) clearing prices. Raw files are downloaded into `data/raw/fuels/` and not committed.
+
+**Limitations.** No negative prices and no scarcity pricing: bids below or above marginal cost, start-up costs and minimum run times are not modelled, and the zero-price step stands in for hours that exports and flexibility actually price. Imports are taken as observed rather than priced, so the model explains the domestic margin only. Fuel prices are monthly averages (daily gas price swings are averaged out), the lignite fuel cost is an assumption calibrated on 2023, and capacities and must-run are inferred from observed output rather than from plant lists. The dispatch is per hour with no ramping or storage coupling.
+
 ## v0.3: battery day-ahead arbitrage
 
 ![Battery revenue](figures/storage_revenue.png)
@@ -132,6 +165,7 @@ pip install -e ".[test]"
 python -m deppa.run               # downloads 2023-2025 (cached), writes results/ and figures/
 python -m deppa.validate          # v0.2: floor valuation checks and VaR/ES backtests, writes results/validation/
 python -m deppa.storage_run       # v0.3: battery arbitrage 2023-2025 (about 8 minutes), writes results/storage/
+python -m deppa.dispatch_run      # v0.4: merit-order price model, calibrated on 2023, writes results/dispatch/
 pytest                            # offline tests on synthetic data
 ```
 
@@ -144,7 +178,7 @@ pytest                            # offline tests on synthetic data
 
 ## Roadmap
 
-- **v0.4**: a merit-order dispatch model of the German market (linear program) that reproduces hourly prices, validated against the actual day-ahead prices.
-- **v0.5**: scenarios (CO2 price, gas price shock, renewable share, coal exit) and capture prices under each scenario.
+- **v0.5**: price the margin better: an import supply curve from neighbouring zones, must-run bids below cost, daily gas prices and a unit-commitment variant (MILP with start-up costs and minimum load) for the low-price and scarcity hours.
+- **v0.6**: scenarios (CO2 price, gas price shock, renewable share, coal exit) and capture prices and battery revenues under each scenario.
 - Battery follow-ups: scheduling under price uncertainty (stochastic programming, value of the stochastic solution and of perfect information), intraday revenue, capex and payback.
 - Validation follow-ups: volatility from EEX futures, seasonal filtered historical simulation for solar, stressed VaR.
