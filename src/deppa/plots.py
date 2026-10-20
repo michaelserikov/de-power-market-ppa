@@ -175,3 +175,64 @@ def var_backtest(forecasts: dict[str, pd.DataFrame], out: Path) -> None:
     fig.tight_layout()
     fig.savefig(out, dpi=160)
     plt.close(fig)
+
+
+# --- v0.3: battery arbitrage ------------------------------------------------------------------
+
+DUR_COLOR = {1.0: "#9ec5f0", 2.0: "#2a78d6", 4.0: "#123f7a"}
+
+
+def storage_revenue(summary: pd.DataFrame, out: Path) -> None:
+    """Grouped bars: day-ahead arbitrage profit per MW and year, by storage duration; naive share labelled."""
+    years = sorted(summary["year"].unique())
+    fig, ax = plt.subplots(figsize=(8, 4.2))
+    width = 0.26
+    x = np.arange(len(years))
+    for i, (dur, g) in enumerate(summary.groupby("duration_h")):
+        g = g.set_index("year").loc[years]
+        bars = ax.bar(x + (i - 1) * width, g["profit_eur_per_mw"] / 1e3, width - 0.03,
+                      color=DUR_COLOR.get(dur, INK2), label=f"{dur:.0f} h")
+        for b_, v in zip(bars, g["profit_eur_per_mw"] / 1e3):
+            ax.text(b_.get_x() + b_.get_width() / 2, v + 1, f"{v:.0f}", ha="center", va="bottom", fontsize=8, color=INK2)
+    ax.set_xticks(x, [str(y) for y in years])
+    _style(ax, "Battery day-ahead arbitrage, 1 MW, perfect day-ahead prices: profit by year", "thousand EUR per MW")
+    ax.legend(frameon=False, ncols=3, loc="upper left", title="storage duration", title_fontsize=8, labelcolor=INK)
+    fig.tight_layout()
+    fig.savefig(out, dpi=160)
+    plt.close(fig)
+
+
+def storage_profile(profile: pd.DataFrame, out: Path) -> None:
+    """Mean net discharge by hour of day (2-hour battery), one line per year."""
+    shades = {2023: "#9ec5f0", 2024: "#2a78d6", 2025: "#123f7a"}
+    fig, ax = plt.subplots(figsize=(8, 4.2))
+    for year in profile.columns:
+        ax.plot(profile.index, profile[year], color=shades.get(year, INK2), linewidth=2, label=str(year))
+    ax.axhline(0, color=INK2, linewidth=1)
+    ax.set_xticks(range(0, 24, 3))
+    _style(ax, "When the 2-hour battery charges (<0) and discharges (>0): mean by local hour", "MW")
+    ax.set_xlabel("hour of day (local time)", color=INK2)
+    ax.legend(frameon=False, ncols=3, loc="upper left", bbox_to_anchor=(0, -0.14), labelcolor=INK)
+    fig.tight_layout()
+    fig.savefig(out, dpi=160)
+    plt.close(fig)
+
+
+def spreads_solar(monthly: pd.DataFrame, slope: float, intercept: float, out: Path) -> None:
+    """Scatter: monthly mean daily spread (2 highest minus 2 lowest hours) against solar share of load."""
+    fig, ax = plt.subplots(figsize=(8, 4.2))
+    shades = {2023: "#f4b08f", 2024: "#eb6834", 2025: "#a8401a"}
+    for year, m in monthly.groupby(level=0):
+        ax.scatter(m["solar_share"], m["spread_2h"], s=42, color=shades.get(year, COLOR["solar"]),
+                   edgecolor=SURFACE, linewidth=1.5, label=str(year), zorder=3)
+    xs = np.linspace(monthly["solar_share"].min(), monthly["solar_share"].max(), 50)
+    ax.plot(xs, intercept + slope * xs, color=INK2, linewidth=1.5, linestyle=(0, (4, 3)))
+    ax.text(0.02, 0.95, f"OLS: {slope / 100:+.1f} EUR/MWh spread per +1 pp solar share",
+            transform=ax.transAxes, ha="left", va="top", fontsize=9, color=INK2)
+    ax.xaxis.set_major_formatter(matplotlib.ticker.PercentFormatter(1.0))
+    _style(ax, "Daily price spread vs solar share of load, by month", "EUR/MWh (2 highest - 2 lowest hours)")
+    ax.set_xlabel("solar generation / load (month)", color=INK2)
+    ax.legend(frameon=False, loc="lower right", labelcolor=INK)
+    fig.tight_layout()
+    fig.savefig(out, dpi=160)
+    plt.close(fig)

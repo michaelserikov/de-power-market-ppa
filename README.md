@@ -1,4 +1,4 @@
-# German power market: capture prices, PPA valuation and model validation (v0.2)
+# German power market: capture prices, PPA valuation, model validation and battery arbitrage (v0.3)
 
 What is a MWh of wind or solar power actually worth on the German day-ahead market, and what does that mean for a power purchase agreement (PPA)? This project answers that from hourly market data for 2023 to 2025 (bidding zone DE-LU, 26,304 hours, no gaps): capture prices and capture rates, the cost of negative prices, the fair strike of a pay-as-produced PPA, the shape cost of a baseload PPA and the month-to-month risk an offtaker carries.
 
@@ -12,6 +12,11 @@ What is a MWh of wind or solar power actually worth on the German day-ahead mark
 - A Black-76 model for a 12-month PPA price floor (60 EUR/MWh on the monthly average price) was validated like a bank's front-office model: independent Monte Carlo replication (30 prices, all within 1.7 standard errors), analytic Greeks against finite differences (relative error 3e-8), a challenger model calibrated on daily prices and a sensitivity ladder.
 - Main valuation finding: the model ignores that the floor settles on a monthly average and overstates its value by 11.7% under its own assumptions. A two-factor challenger points the same way (Black-76 32% higher), but its level/noise split is not identified from three years of spot data, so the volatility input needs market data (EEX futures or options).
 - One-day VaR(99%) and ES(97.5%) of a PPA offtaker were backtested over 731 days (Kupiec, Christoffersen, Basel traffic light, ES exceedance test). Normal-EWMA and GARCH(1,1)-t models land in the red zone (19-30 exceptions against 7.3 expected), with solar exceptions almost all on weekends and holidays; historical simulation passes coverage, and conditioning it on the day type fixes the wind position but not solar.
+
+**v0.3: battery day-ahead arbitrage**
+- A 1 MW battery scheduled optimally on each day's day-ahead prices (88% round trip, 10 EUR/MWh degradation cost) earned 52, 63 and 72 thousand EUR per MW in 2023, 2024 and 2025 with 2 hours of storage, and 29 to 40 (1 hour) or 79 to 114 (4 hours) thousand EUR per MW. Revenue grew by about 40% in two years for every duration.
+- The reason is wider daily spreads: the mean gap between the two most and the two least expensive hours rose from 92 to 104 and 116 EUR/MWh, and hours with negative prices from 301 to 457 and 573. Across months, each additional percentage point of solar in the load widens the spread by about 2.2 EUR/MWh. Solar cannibalises its own capture price (v0.1) but feeds storage.
+- Longer storage earns more per MW but less per MWh of capacity (2025: 40 thousand EUR per MWh for 1 hour, 28 for 4 hours). A naive schedule built from yesterday's prices captures 71 to 81% of the optimal profit, so knowing the day's prices is worth about a fifth of the revenue.
 
 ## Results
 
@@ -70,6 +75,30 @@ Method, findings with severity and recommendations: [reports/model_validation_re
 
 **Methods in short.** Black-76 with analytic Greeks; antithetic Monte Carlo; implied volatility by root finding; a two-factor arithmetic price model (Schwartz-Smith type split into a random-walk level and an AR(1) deviation, weekday effects) priced in closed form (Bachelier on the monthly average) and by simulation. VaR/ES by historical simulation, normal with EWMA volatility (RiskMetrics, lambda 0.94) and GARCH(1,1) with Student-t innovations (maximum likelihood, own implementation), on a 365-day rolling window. Backtests: Kupiec proportion of failures, Christoffersen independence and conditional coverage, Basel traffic light from binomial probabilities, and a bootstrap ES exceedance test.
 
+## v0.3: battery day-ahead arbitrage
+
+![Battery revenue](figures/storage_revenue.png)
+
+| Profit, thousand EUR per MW (cycles per year) | 2023 | 2024 | 2025 |
+|---|---|---|---|
+| 1 hour | 28.6 (580) | 35.0 (596) | 39.9 (582) |
+| 2 hours | 51.6 (549) | 63.3 (565) | 72.3 (549) |
+| 4 hours | 79.1 (434) | 96.9 (434) | 113.5 (435) |
+| 2 hours, no degradation cost | 63.5 (667) | 75.6 (680) | 84.3 (670) |
+| 2 hours, 20 EUR/MWh degradation cost | 41.4 (468) | 52.9 (470) | 62.1 (468) |
+| Naive schedule (yesterday's prices), share of optimum, 2 hours | 73% | 76% | 81% |
+| Share of charged energy bought at negative prices, 2 hours | 7% | 13% | 16% |
+
+![Charging profile](figures/storage_profile.png)
+
+The battery cycles about 1.5 times per day: it charges at night (around 3:00) and at midday (12:00 to 14:00, the solar peak) and discharges in the morning (7:00 to 8:00) and evening (18:00 to 20:00) peaks.
+
+![Spreads vs solar](figures/spreads_solar.png)
+
+**Method.** For each local day a mixed-integer linear program (SciPy `milp`, HiGHS) chooses hourly charging and discharging (1 MW, 1, 2 or 4 MWh) to maximise revenue at that day's day-ahead prices minus a degradation cost per MWh discharged; a binary variable per hour rules out charging and discharging at the same time; the battery starts and ends each day half full. Day-ahead prices are known the day before delivery, so the schedule is achievable; the naive benchmark schedules on the previous day's prices and is settled at the actual ones. Outputs: `results/storage/` (daily results per duration, summary, degradation sensitivity, hourly profile, daily spreads, `summary.json`).
+
+**Limitations.** Price-taker: the battery does not move prices, so the effect of a growing storage fleet on spreads (self-cannibalisation) is not modelled; historically spreads widened. Day-ahead only, no intraday, balancing or ancillary-service revenue, no grid fees or capex, so this is not a business case. The half-full constraint at midnight forces a recharge in the last hour of the day (visible at 23:00 in the profile). Hourly prices as published by SMARD, also after the switch to 15-minute day-ahead products on 1 October 2025.
+
 ## Method
 
 - **Capture price** of a technology over a period: generation-weighted mean price, `sum(price * generation) / sum(generation)`. **Capture rate**: capture price divided by the baseload (time-weighted mean) price.
@@ -102,6 +131,7 @@ python -m venv .venv
 pip install -e ".[test]"
 python -m deppa.run               # downloads 2023-2025 (cached), writes results/ and figures/
 python -m deppa.validate          # v0.2: floor valuation checks and VaR/ES backtests, writes results/validation/
+python -m deppa.storage_run       # v0.3: battery arbitrage 2023-2025 (about 8 minutes), writes results/storage/
 pytest                            # offline tests on synthetic data
 ```
 
@@ -114,6 +144,7 @@ pytest                            # offline tests on synthetic data
 
 ## Roadmap
 
-- **v0.3**: a merit-order dispatch model of the German market (linear program) that reproduces hourly prices, validated against the actual day-ahead prices.
-- **v0.4**: scenarios (CO2 price, gas price shock, renewable share, coal exit) and capture prices under each scenario.
+- **v0.4**: a merit-order dispatch model of the German market (linear program) that reproduces hourly prices, validated against the actual day-ahead prices.
+- **v0.5**: scenarios (CO2 price, gas price shock, renewable share, coal exit) and capture prices under each scenario.
+- Battery follow-ups: scheduling under price uncertainty (stochastic programming, value of the stochastic solution and of perfect information), intraday revenue, capex and payback.
 - Validation follow-ups: volatility from EEX futures, seasonal filtered historical simulation for solar, stressed VaR.

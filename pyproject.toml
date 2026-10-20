@@ -1,7 +1,7 @@
 [project]
 name = "deppa"
-version = "0.2.0"
-description = "German day-ahead power market: capture prices, PPA valuation, market risk and model validation from SMARD data"
+version = "0.3.0"
+description = "German day-ahead power market: capture prices, PPA valuation, market risk, model validation and battery arbitrage from SMARD data"
 requires-python = ">=3.11"
 dependencies = [
     "pandas>=2.2",

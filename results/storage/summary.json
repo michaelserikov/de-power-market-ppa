@@ -1,0 +1,163 @@
+{
+  "battery": {
+    "power_mw": 1.0,
+    "round_trip": 0.88,
+    "deg_cost_base": 10.0,
+    "soc_start_end": 0.5
+  },
+  "summary": [
+    {
+      "duration_h": 1.0,
+      "year": 2023,
+      "profit_eur_per_mw": 28563.7371,
+      "cycles": 579.6861,
+      "share_charged_at_negative_price": 0.0719,
+      "naive_capture": 0.7288
+    },
+    {
+      "duration_h": 1.0,
+      "year": 2024,
+      "profit_eur_per_mw": 35004.699,
+      "cycles": 595.9863,
+      "share_charged_at_negative_price": 0.1314,
+      "naive_capture": 0.7666
+    },
+    {
+      "duration_h": 1.0,
+      "year": 2025,
+      "profit_eur_per_mw": 39856.437,
+      "cycles": 581.9732,
+      "share_charged_at_negative_price": 0.1584,
+      "naive_capture": 0.8059
+    },
+    {
+      "duration_h": 2.0,
+      "year": 2023,
+      "profit_eur_per_mw": 51573.5822,
+      "cycles": 549.4745,
+      "share_charged_at_negative_price": 0.0737,
+      "naive_capture": 0.7292
+    },
+    {
+      "duration_h": 2.0,
+      "year": 2024,
+      "profit_eur_per_mw": 63284.3606,
+      "cycles": 565.0071,
+      "share_charged_at_negative_price": 0.1311,
+      "naive_capture": 0.7639
+    },
+    {
+      "duration_h": 2.0,
+      "year": 2025,
+      "profit_eur_per_mw": 72290.4278,
+      "cycles": 549.392,
+      "share_charged_at_negative_price": 0.1631,
+      "naive_capture": 0.809
+    },
+    {
+      "duration_h": 4.0,
+      "year": 2023,
+      "profit_eur_per_mw": 79066.4469,
+      "cycles": 433.8265,
+      "share_charged_at_negative_price": 0.0786,
+      "naive_capture": 0.7058
+    },
+    {
+      "duration_h": 4.0,
+      "year": 2024,
+      "profit_eur_per_mw": 96894.7144,
+      "cycles": 434.2153,
+      "share_charged_at_negative_price": 0.1442,
+      "naive_capture": 0.7652
+    },
+    {
+      "duration_h": 4.0,
+      "year": 2025,
+      "profit_eur_per_mw": 113528.1882,
+      "cycles": 434.5364,
+      "share_charged_at_negative_price": 0.1876,
+      "naive_capture": 0.8141
+    }
+  ],
+  "degradation_sensitivity_2h": [
+    {
+      "deg_cost": 0.0,
+      "year": 2023,
+      "profit_eur_per_mw": 63516.39,
+      "cycles": 666.81
+    },
+    {
+      "deg_cost": 0.0,
+      "year": 2024,
+      "profit_eur_per_mw": 75570.21,
+      "cycles": 680.42
+    },
+    {
+      "deg_cost": 0.0,
+      "year": 2025,
+      "profit_eur_per_mw": 84254.14,
+      "cycles": 669.98
+    },
+    {
+      "deg_cost": 10.0,
+      "year": 2023,
+      "profit_eur_per_mw": 51573.58,
+      "cycles": 549.47
+    },
+    {
+      "deg_cost": 10.0,
+      "year": 2024,
+      "profit_eur_per_mw": 63284.36,
+      "cycles": 565.01
+    },
+    {
+      "deg_cost": 10.0,
+      "year": 2025,
+      "profit_eur_per_mw": 72290.43,
+      "cycles": 549.39
+    },
+    {
+      "deg_cost": 20.0,
+      "year": 2023,
+      "profit_eur_per_mw": 41377.49,
+      "cycles": 467.98
+    },
+    {
+      "deg_cost": 20.0,
+      "year": 2024,
+      "profit_eur_per_mw": 52946.79,
+      "cycles": 469.82
+    },
+    {
+      "deg_cost": 20.0,
+      "year": 2025,
+      "profit_eur_per_mw": 62149.19,
+      "cycles": 467.99
+    }
+  ],
+  "spreads_by_year": [
+    {
+      "year": 2023,
+      "spread_maxmin": 97.88,
+      "spread_2h": 91.68,
+      "negative_hours": 301.0
+    },
+    {
+      "year": 2024,
+      "spread_maxmin": 111.2,
+      "spread_2h": 103.8,
+      "negative_hours": 457.0
+    },
+    {
+      "year": 2025,
+      "spread_maxmin": 124.13,
+      "spread_2h": 116.08,
+      "negative_hours": 573.0
+    }
+  ],
+  "spread_vs_solar_monthly": {
+    "slope_eur_per_unit_share": 223.64503634394367,
+    "intercept": 71.30510073324902,
+    "months": 36
+  }
+}
