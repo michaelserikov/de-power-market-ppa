@@ -112,3 +112,66 @@ def pap_risk(results: dict[str, pd.DataFrame], out: Path) -> None:
     fig.tight_layout()
     fig.savefig(out, dpi=160)
     plt.close(fig)
+
+
+# --- v0.2: model validation and market risk --------------------------------------------------
+
+MODEL_COLOR = {"hs": "#2a78d6", "ewma": "#eb6834", "garch": "#1baf7a", "hs_cal": "#7c4dbd"}
+MODEL_LABEL = {"hs": "Historical simulation", "ewma": "Normal, EWMA vol", "garch": "GARCH(1,1)-t",
+               "hs_cal": "HS by day type"}
+
+
+def mc_convergence(conv: pd.DataFrame, out: Path) -> None:
+    """Monte Carlo estimate with a 95% band against the Black-76 price, by number of paths."""
+    fig, ax = plt.subplots(figsize=(8, 4.2))
+    ax.axhline(conv["black76"].iloc[0], color=INK2, linewidth=1.2, linestyle=(0, (4, 3)))
+    ax.text(conv["n"].iloc[0], conv["black76"].iloc[0], " Black-76", va="bottom", fontsize=8, color=INK2)
+    ax.errorbar(conv["n"], conv["mc"], yerr=1.96 * conv["mc_se"], fmt="o", color=COLOR["wind_onshore"],
+                ecolor=COLOR["wind_onshore"], capsize=3, markersize=5, zorder=3)
+    ax.set_xscale("log")
+    _style(ax, "Monte Carlo vs Black-76, put K = 80, T = 0.5 (95% band)", "EUR/MWh")
+    ax.set_xlabel("number of paths (antithetic)", color=INK2)
+    fig.tight_layout()
+    fig.savefig(out, dpi=160)
+    plt.close(fig)
+
+
+def floor_strip(strip: pd.DataFrame, strike: float, out: Path, strip_adj: pd.DataFrame | None = None) -> None:
+    """Price of each monthly put of the floor under Black-76, its averaging fix and the challenger."""
+    fig, ax = plt.subplots(figsize=(8, 4.2))
+    x = np.arange(len(strip))
+    ax.plot(x, strip["black76"], color=COLOR["solar"], linewidth=2, marker="o", markersize=4,
+            label="Black-76, expiry at month end (model under validation)")
+    ax.plot(x, strip["black76_avg_time"], color=INK2, linewidth=1.5, linestyle=(0, (4, 3)),
+            label="Black-76, variance time of a monthly average")
+    ax.plot(x, strip["challenger"], color=COLOR["wind_onshore"], linewidth=2, label="Challenger, two-factor (analytic)")
+    ax.errorbar(x, strip["challenger_mc"], yerr=1.96 * strip["challenger_mc_se"], fmt="none",
+                ecolor=COLOR["wind_onshore"], capsize=2, alpha=0.7, label="Challenger, Monte Carlo 95% band")
+    if strip_adj is not None:
+        ax.plot(x, strip_adj["challenger"], color=COLOR["wind_onshore"], linewidth=1.5, linestyle=(0, (1, 2)),
+                label="Challenger, phi bias-corrected (+0.07)")
+    ax.set_xticks(x, strip["month"], rotation=45, ha="right")
+    _style(ax, f"Floor at {strike:.0f} EUR/MWh on the monthly average price: value of each monthly put",
+           "EUR/MWh")
+    ax.legend(frameon=False, loc="upper left", labelcolor=INK, fontsize=8)
+    fig.tight_layout()
+    fig.savefig(out, dpi=160)
+    plt.close(fig)
+
+
+def var_backtest(forecasts: dict[str, pd.DataFrame], out: Path) -> None:
+    """Daily loss of the PPA offtaker against one-day 99% VaR forecasts; exceptions marked."""
+    fig, axes = plt.subplots(len(forecasts), 1, figsize=(8, 3.4 * len(forecasts)), sharex=True)
+    for ax, (tech, fc) in zip(np.atleast_1d(axes), forecasts.items()):
+        ax.plot(fc.index, fc["loss"] / 1e3, color=INK2, alpha=0.35, linewidth=0.7, label="daily loss")
+        for m in ("hs", "garch"):
+            ax.plot(fc.index, fc[f"{m}_var"] / 1e3, color=MODEL_COLOR[m], linewidth=1.3, label=f"99% VaR, {MODEL_LABEL[m]}")
+            hit = fc["loss"] > fc[f"{m}_var"]
+            ax.scatter(fc.index[hit], fc["loss"][hit] / 1e3, s=14, color=MODEL_COLOR[m], zorder=3)
+        lo, hi = np.percentile(fc["loss"] / 1e3, [0.5, 99.9])
+        ax.set_ylim(lo * 1.1, max(hi, (fc[["hs_var", "garch_var"]].max().max() / 1e3)) * 1.1)
+        _style(ax, f"{LABEL[tech]}: PaP PPA offtaker, 100 GWh/yr, daily loss vs 99% VaR", "thousand EUR")
+    np.atleast_1d(axes)[0].legend(frameon=False, ncols=2, loc="upper left", fontsize=8, labelcolor=INK)
+    fig.tight_layout()
+    fig.savefig(out, dpi=160)
+    plt.close(fig)

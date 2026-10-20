@@ -1,4 +1,4 @@
-# German power market: capture prices and PPA valuation (v0.1)
+# German power market: capture prices, PPA valuation and model validation (v0.2)
 
 What is a MWh of wind or solar power actually worth on the German day-ahead market, and what does that mean for a power purchase agreement (PPA)? This project answers that from hourly market data for 2023 to 2025 (bidding zone DE-LU, 26,304 hours, no gaps): capture prices and capture rates, the cost of negative prices, the fair strike of a pay-as-produced PPA, the shape cost of a baseload PPA and the month-to-month risk an offtaker carries.
 
@@ -7,6 +7,11 @@ What is a MWh of wind or solar power actually worth on the German day-ahead mark
 - The fair pay-as-produced strike for solar dropped from 72 EUR/MWh (2023) to 46 EUR/MWh (2024 and 2025). A solar PPA priced on 2023 data would have overpaid by about 26 EUR/MWh in the following two years.
 - Negative prices matter mostly for solar: 24% of 2025 solar output fell into negative-price hours. A plant that stops producing in those hours would have raised its 2025 capture price from 46 to 65 EUR/MWh.
 - Selling solar as a baseload product carries a growing shape cost: 23 EUR/MWh in 2023, 32 in 2024 and 43 in 2025 (24%, 41% and 48% of the baseload price).
+
+**v0.2: market risk and model validation** ([full report](reports/model_validation_report.md))
+- A Black-76 model for a 12-month PPA price floor (60 EUR/MWh on the monthly average price) was validated like a bank's front-office model: independent Monte Carlo replication (30 prices, all within 1.7 standard errors), analytic Greeks against finite differences (relative error 3e-8), a challenger model calibrated on daily prices and a sensitivity ladder.
+- Main valuation finding: the model ignores that the floor settles on a monthly average and overstates its value by 11.7% under its own assumptions. A two-factor challenger points the same way (Black-76 32% higher), but its level/noise split is not identified from three years of spot data, so the volatility input needs market data (EEX futures or options).
+- One-day VaR(99%) and ES(97.5%) of a PPA offtaker were backtested over 731 days (Kupiec, Christoffersen, Basel traffic light, ES exceedance test). Normal-EWMA and GARCH(1,1)-t models land in the red zone (19-30 exceptions against 7.3 expected), with solar exceptions almost all on weekends and holidays; historical simulation passes coverage, and conditioning it on the day type fixes the wind position but not solar.
 
 ## Results
 
@@ -37,6 +42,33 @@ Shape cost of a baseload PPA (baseload price minus capture price, EUR/MWh):
 | 2025 | 12.0 | 3.8 | 43.3 |
 
 All numbers are written by the pipeline to `results/` (`capture_prices_yearly.csv`, `capture_prices_monthly.csv`, `baseload_profile_cost.csv`, `pap_monthly_offtaker.csv`, `summary.json`).
+
+## v0.2: model validation and market risk
+
+![Floor valuation](figures/floor_strip.png)
+
+| Floor value, 12 monthly puts (EUR/MWh-month) | |
+|---|---|
+| Black-76, expiry at month end (model under validation) | 30.19 |
+| Black-76, variance time of a monthly average | 26.66 |
+| Two-factor challenger (random-walk level + mean-reverting daily deviation, arithmetic) | 22.81 |
+
+![VaR backtest](figures/var_backtest.png)
+
+| Position | Model | Exceptions (expected 7.3) | Kupiec p | Independence p | Zone, full / worst 250 days |
+|---|---|---|---|---|---|
+| Solar | Historical simulation | 10 | 0.34 | 0.60 | green / yellow |
+| Solar | Normal, EWMA vol | 21 | <0.001 | <0.001 | red / red |
+| Solar | GARCH(1,1)-t | 19 | <0.001 | 0.51 | red / red |
+| Solar | HS by day type | 14 | 0.03 | <0.001 | yellow / yellow |
+| Wind onshore | Historical simulation | 10 | 0.34 | <0.001 | green / yellow |
+| Wind onshore | Normal, EWMA vol | 30 | <0.001 | 0.04 | red / red |
+| Wind onshore | GARCH(1,1)-t | 24 | <0.001 | 0.20 | red / red |
+| Wind onshore | HS by day type | 11 | 0.20 | 0.15 | green / yellow |
+
+Method, findings with severity and recommendations: [reports/model_validation_report.md](reports/model_validation_report.md). Outputs: `results/validation/` (replication, Greeks, sensitivity, floor strip, VaR/ES forecasts, backtests, `summary.json`).
+
+**Methods in short.** Black-76 with analytic Greeks; antithetic Monte Carlo; implied volatility by root finding; a two-factor arithmetic price model (Schwartz-Smith type split into a random-walk level and an AR(1) deviation, weekday effects) priced in closed form (Bachelier on the monthly average) and by simulation. VaR/ES by historical simulation, normal with EWMA volatility (RiskMetrics, lambda 0.94) and GARCH(1,1) with Student-t innovations (maximum likelihood, own implementation), on a 365-day rolling window. Backtests: Kupiec proportion of failures, Christoffersen independence and conditional coverage, Basel traffic light from binomial probabilities, and a bootstrap ES exceedance test.
 
 ## Method
 
@@ -69,17 +101,19 @@ python -m venv .venv
 .venv/Scripts/activate            # Windows; on Linux/macOS: source .venv/bin/activate
 pip install -e ".[test]"
 python -m deppa.run               # downloads 2023-2025 (cached), writes results/ and figures/
+python -m deppa.validate          # v0.2: floor valuation checks and VaR/ES backtests, writes results/validation/
 pytest                            # offline tests on synthetic data
 ```
 
 ## Limitations
 
 - Generation profiles are national fleet totals, not a single plant. A specific site has its own profile and therefore its own capture price.
-- Volume risk is not assessed: national generation grows with installed capacity, so year-to-year volume changes in this data mix weather and new build. This needs capacity data (planned for v0.2).
+- Volume risk is not assessed: national generation grows with installed capacity, so year-to-year volume changes in this data mix weather and new build. This needs capacity data (planned for a later version).
 - From 1 October 2025 the day-ahead market clears in 15-minute periods; the hourly price series is used as published by SMARD.
 - Historical analysis only: no forecast of future capture prices, and no imbalance costs, grid fees or guarantees of origin in the PPA values.
 
 ## Roadmap
 
-- **v0.2**: a merit-order dispatch model of the German market (linear program) that reproduces hourly prices, validated against the actual day-ahead prices.
-- **v0.3**: scenarios (CO2 price, gas price shock, renewable share, coal exit) and capture prices under each scenario.
+- **v0.3**: a merit-order dispatch model of the German market (linear program) that reproduces hourly prices, validated against the actual day-ahead prices.
+- **v0.4**: scenarios (CO2 price, gas price shock, renewable share, coal exit) and capture prices under each scenario.
+- Validation follow-ups: volatility from EEX futures, seasonal filtered historical simulation for solar, stressed VaR.

@@ -18,6 +18,16 @@ from .smard import load_all
 ROOT = Path(__file__).resolve().parents[2]
 
 
+def load_hourly(start: str, end: str, data: Path = ROOT / "data") -> pd.DataFrame:
+    """Hourly table for whole local calendar years start..end (downloads are cached in data/raw)."""
+    # Download one extra UTC day before the start: local midnight on 1 January is 23:00 UTC.
+    first_day = (pd.Timestamp(start) - pd.Timedelta(days=1)).date().isoformat()
+    hourly = db.prepare_hourly(load_all(first_day, end, data / "raw"))
+    # Local-calendar filter: the UTC download window is a day wider than the local years.
+    years = range(pd.Timestamp(start).year, pd.Timestamp(end).year + 1)
+    return hourly[hourly["year"].isin(years)].reset_index(drop=True)
+
+
 def main(argv: list[str] | None = None) -> dict:
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument("--start", default="2023-01-01")
@@ -28,13 +38,7 @@ def main(argv: list[str] | None = None) -> dict:
     for d in (data, results, figures):
         d.mkdir(exist_ok=True)
 
-    # Download one extra UTC day before the start: local midnight on 1 January is 23:00 UTC.
-    first_day = (pd.Timestamp(args.start) - pd.Timedelta(days=1)).date().isoformat()
-    raw = load_all(first_day, args.end, data / "raw")
-    hourly = db.prepare_hourly(raw)
-    # Local-calendar filter: the UTC download window is a day wider than the local years.
-    years = range(pd.Timestamp(args.start).year, pd.Timestamp(args.end).year + 1)
-    hourly = hourly[hourly["year"].isin(years)].reset_index(drop=True)
+    hourly = load_hourly(args.start, args.end, data)
 
     con = db.connect(hourly, data / "market.duckdb")
     yearly = db.capture_prices(con, "year")
