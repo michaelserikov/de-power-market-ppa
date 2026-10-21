@@ -296,3 +296,141 @@ def dispatch_generation(gen: pd.DataFrame, out: Path) -> None:
     fig.tight_layout()
     fig.savefig(out, dpi=160)
     plt.close(fig)
+
+
+# --- v0.5: price forecasting ----------------------------------------------------------------------
+
+MODEL_STYLE = {"naive": ("#b8b6b0", "Naive"), "lear_avg": ("#2a78d6", "LEAR (avg of 364 and 728 days)"),
+               "gbm": ("#1baf7a", "Gradient boosting"), "lear_gbm_avg": ("#123f7a", "LEAR + GBM average")}
+
+
+def forecast_mae_by_hour(mae: pd.DataFrame, out: Path) -> None:
+    fig, ax = plt.subplots(figsize=(8, 4.2))
+    for m, (c, label) in MODEL_STYLE.items():
+        ax.plot(mae.index, mae[m], color=c, linewidth=2, label=label, marker="o", markersize=3)
+    ax.set_xticks(range(0, 24, 3))
+    _style(ax, "Mean absolute error by hour of day, 2024-2025 out of sample", "EUR/MWh")
+    ax.set_xlabel("hour of day (local time)", color=INK2)
+    ax.legend(frameon=False, ncols=2, loc="upper left", fontsize=8, labelcolor=INK)
+    fig.tight_layout()
+    fig.savefig(out, dpi=160)
+    plt.close(fig)
+
+
+def forecast_example_week(actual: pd.DataFrame, fcs: dict, start: pd.Timestamp, out: Path) -> None:
+    days = pd.date_range(start, periods=7, freq="D")
+    t = pd.date_range(start, periods=7 * 24, freq="h")
+    fig, ax = plt.subplots(figsize=(8, 4.2))
+    ax.plot(t, actual.loc[days].to_numpy().ravel(), color=INK, linewidth=2, label="Actual")
+    for m in ("naive", "lear_avg", "gbm"):
+        c, label = MODEL_STYLE[m]
+        ax.plot(t, fcs[m].loc[days].to_numpy().ravel(), color=c, linewidth=1.4, label=label)
+    ax.axhline(0, color=INK2, linewidth=0.8)
+    _style(ax, f"Day-ahead price and forecasts, week of {start.date()}", "EUR/MWh")
+    ax.legend(frameon=False, ncols=4, loc="upper left", bbox_to_anchor=(0, -0.08), fontsize=8, labelcolor=INK)
+    fig.tight_layout()
+    fig.savefig(out, dpi=160)
+    plt.close(fig)
+
+
+def forecast_monthly_mae(actual: pd.DataFrame, fcs: dict, out: Path) -> None:
+    fig, ax = plt.subplots(figsize=(8, 4.2))
+    for m, (c, label) in MODEL_STYLE.items():
+        e = (fcs[m] - actual).abs().mean(axis=1)
+        mm = e.groupby(e.index.to_period("M")).mean()
+        ax.plot(mm.index.to_timestamp(), mm.to_numpy(), color=c, linewidth=2, label=label)
+    _style(ax, "Monthly mean absolute error, out of sample", "EUR/MWh")
+    ax.legend(frameon=False, ncols=2, loc="upper left", fontsize=8, labelcolor=INK)
+    fig.tight_layout()
+    fig.savefig(out, dpi=160)
+    plt.close(fig)
+
+
+# --- v0.6: probabilistic forecasts and their value --------------------------------------------------
+
+def fan_chart(actual: pd.DataFrame, qf: dict, start: pd.Timestamp, out: Path) -> None:
+    days = pd.date_range(start, periods=7, freq="D")
+    t = pd.date_range(start, periods=7 * 24, freq="h")
+    fig, ax = plt.subplots(figsize=(8, 4.2))
+    for lo, hi, alpha in ((0.05, 0.95, 0.18), (0.25, 0.75, 0.35)):
+        ax.fill_between(t, qf[lo].loc[days].to_numpy().ravel(), qf[hi].loc[days].to_numpy().ravel(),
+                        color="#2a78d6", alpha=alpha, linewidth=0, label=f"{int(lo * 100)}-{int(hi * 100)}% QRA interval")
+    ax.plot(t, qf[0.5].loc[days].to_numpy().ravel(), color="#123f7a", linewidth=1.4, label="QRA median")
+    ax.plot(t, actual.loc[days].to_numpy().ravel(), color=INK, linewidth=1.6, label="Actual")
+    ax.axhline(0, color=INK2, linewidth=0.8)
+    _style(ax, f"Probabilistic day-ahead forecast (QRA), week of {start.date()}", "EUR/MWh")
+    ax.legend(frameon=False, ncols=4, loc="upper left", bbox_to_anchor=(0, -0.08), fontsize=8, labelcolor=INK)
+    fig.tight_layout()
+    fig.savefig(out, dpi=160)
+    plt.close(fig)
+
+
+def reliability(rel: pd.DataFrame, out: Path) -> None:
+    fig, ax = plt.subplots(figsize=(5.6, 5))
+    ax.plot([0, 1], [0, 1], color=INK2, linewidth=1, linestyle=(0, (4, 3)))
+    for col, c, label in (("qra", "#2a78d6", "QRA"), ("historical_errors", "#eb6834", "Historical errors")):
+        ax.plot(rel.index, rel[col], color=c, linewidth=2, marker="o", markersize=4, label=label)
+    ax.set_xlim(0, 1); ax.set_ylim(0, 1)
+    _style(ax, "Reliability: share of prices below each quantile", "observed frequency")
+    ax.set_xlabel("nominal quantile level", color=INK2)
+    ax.legend(frameon=False, loc="upper left", labelcolor=INK)
+    fig.tight_layout()
+    fig.savefig(out, dpi=160)
+    plt.close(fig)
+
+
+def battery_capture(capture: pd.DataFrame, out: Path) -> None:
+    cols = [("lear_gbm_avg", "#123f7a", "LEAR + GBM"), ("lear_avg", "#2a78d6", "LEAR"), ("gbm", "#1baf7a", "GBM"),
+            ("naive", "#b8b6b0", "Naive"), ("yesterday", "#eb6834", "Yesterday's prices")]
+    years = capture.index.tolist()
+    fig, ax = plt.subplots(figsize=(8, 4.2))
+    width = 0.15
+    x = np.arange(len(years))
+    for i, (c, colour, label) in enumerate(cols):
+        bars = ax.bar(x + (i - 2) * width, capture[c], width * 0.92, color=colour, label=label)
+        for b_, v in zip(bars, capture[c]):
+            ax.text(b_.get_x() + b_.get_width() / 2, v + 0.01, f"{v:.0%}", ha="center", va="bottom", fontsize=7, color=INK2)
+    ax.set_xticks(x, [str(y) for y in years])
+    ax.set_ylim(0, 1.1)
+    ax.yaxis.set_major_formatter(matplotlib.ticker.PercentFormatter(1.0))
+    _style(ax, "Battery scheduled on a forecast: share of the perfect-foresight profit", "share of profit")
+    ax.legend(frameon=False, ncols=5, loc="upper left", bbox_to_anchor=(0, -0.08), fontsize=8, labelcolor=INK)
+    fig.tight_layout()
+    fig.savefig(out, dpi=160)
+    plt.close(fig)
+
+
+# --- v0.7: econometrics ---------------------------------------------------------------------------
+
+def passthrough(m: pd.DataFrame, lr: dict, out: Path) -> None:
+    """Monthly power price against the long-run fit from gas and CO2."""
+    fit = lr["const"] + lr["b_gas"] * m["gas"] + lr["c_co2"] * m["co2"]
+    t = m.index.to_timestamp()
+    fig, ax = plt.subplots(figsize=(8, 4.2))
+    ax.plot(t, m["power"], color=INK, linewidth=2, label="Baseload day-ahead, monthly mean")
+    ax.plot(t, fit, color="#2a78d6", linewidth=2, linestyle=(0, (4, 2)),
+            label=f"{lr['const']:.0f} + {lr['b_gas']:.2f} x gas + {lr['c_co2']:.2f} x CO2")
+    ax.plot(t, m["gas"], color="#eb6834", linewidth=1.2, label="TTF gas, EUR/MWh thermal")
+    _style(ax, "Fuel pass-through: monthly power price, 2020-2025", "EUR/MWh")
+    ax.legend(frameon=False, loc="upper right", fontsize=8, labelcolor=INK)
+    fig.tight_layout()
+    fig.savefig(out, dpi=160)
+    plt.close(fig)
+
+
+def res_errors(errs: pd.DataFrame, by_hour: pd.DataFrame, out: Path) -> None:
+    """Normalised MAE of TSO wind and solar forecasts by year, and MAE by hour of day."""
+    fig, axes = plt.subplots(1, 2, figsize=(8, 3.8))
+    for tech, c in (("wind", "#2a78d6"), ("solar", "#eb6834")):
+        g = errs[errs["tech"] == tech]
+        axes[0].plot(g["year"], g["nmae"], color=c, marker="o", linewidth=2, label=tech.capitalize())
+        axes[1].plot(by_hour.index, by_hour[f"{tech}_mae"] / 1000, color=c, linewidth=2, label=tech.capitalize())
+    axes[0].yaxis.set_major_formatter(matplotlib.ticker.PercentFormatter(1.0))
+    _style(axes[0], "MAE / mean output", "")
+    _style(axes[1], "MAE by hour, 2019-2025", "GW")
+    axes[1].set_xticks(range(0, 24, 6))
+    axes[0].legend(frameon=False, labelcolor=INK)
+    fig.suptitle("TSO day-ahead forecasts of wind and solar generation: errors", x=0.02, ha="left", color=INK, fontsize=12)
+    fig.tight_layout()
+    fig.savefig(out, dpi=160)
+    plt.close(fig)

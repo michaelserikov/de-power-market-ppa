@@ -76,7 +76,7 @@ def load_series(name: str, start: str, end: str, cache_dir: Path, region: str = 
 
     A chunk is cached once it lies fully in the past, so a rerun downloads nothing new.
     """
-    filter_id = {**SERIES, **FUEL_SERIES}[name]
+    filter_id = {**SERIES, **FUEL_SERIES, **FORECAST_SERIES}[name]
     start_ts = pd.Timestamp(start, tz="UTC")
     end_ts = pd.Timestamp(end, tz="UTC") + pd.Timedelta(days=1)
     week = pd.Timedelta(days=7)
@@ -108,6 +108,24 @@ def load_all(start: str, end: str, cache_dir: Path) -> pd.DataFrame:
         if name != "price":
             out = out.merge(load_series(name, start, end, cache_dir), on="ts_utc", how="left")
     return out
+
+
+# Day-ahead forecasts published by the TSOs (v0.5 price forecasting), MWh per hour.
+FORECAST_SERIES = {
+    "load_fc": 411,
+    "onshore_fc": 123,
+    "offshore_fc": 3791,
+    "solar_fc": 125,
+}
+
+
+def load_forecasts(start: str, end: str, cache_dir: Path) -> pd.DataFrame:
+    """TSO day-ahead forecasts (FORECAST_SERIES) joined on the hour; missing hours stay NaN."""
+    out = None
+    for name in FORECAST_SERIES:
+        df = load_series(name, start, end, cache_dir)
+        out = df if out is None else out.merge(df, on="ts_utc", how="outer")
+    return out.sort_values("ts_utc").reset_index(drop=True)
 
 
 def load_fuels(start: str, end: str, cache_dir: Path) -> pd.DataFrame:

@@ -1,4 +1,4 @@
-# German power market: merit-order price model, capture prices, PPA valuation, model validation and battery arbitrage (v0.4)
+# German power market: price forecasting, merit-order price model, capture prices, PPA valuation, model validation and battery arbitrage (v0.5)
 
 What is a MWh of wind or solar power actually worth on the German day-ahead market, and what does that mean for a power purchase agreement (PPA)? This project answers that from hourly market data for 2023 to 2025 (bidding zone DE-LU, 26,304 hours, no gaps): capture prices and capture rates, the cost of negative prices, the fair strike of a pay-as-produced PPA, the shape cost of a baseload PPA and the month-to-month risk an offtaker carries.
 
@@ -12,6 +12,10 @@ What is a MWh of wind or solar power actually worth on the German day-ahead mark
 - A Black-76 model for a 12-month PPA price floor (60 EUR/MWh on the monthly average price) was validated like a bank's front-office model: independent Monte Carlo replication (30 prices, all within 1.7 standard errors), analytic Greeks against finite differences (relative error 3e-8), a challenger model calibrated on daily prices and a sensitivity ladder.
 - Main valuation finding: the model ignores that the floor settles on a monthly average and overstates its value by 11.7% under its own assumptions. A two-factor challenger points the same way (Black-76 32% higher), but its level/noise split is not identified from three years of spot data, so the volatility input needs market data (EEX futures or options).
 - One-day VaR(99%) and ES(97.5%) of a PPA offtaker were backtested over 731 days (Kupiec, Christoffersen, Basel traffic light, ES exceedance test). Normal-EWMA and GARCH(1,1)-t models land in the red zone (19-30 exceptions against 7.3 expected), with solar exceptions almost all on weekends and holidays; historical simulation passes coverage, and conditioning it on the day type fixes the wind position but not solar.
+
+**v0.5: day-ahead price forecasting**
+- Forecasting all 24 hourly prices of the next day with the information available the day before, an average of a LEAR model (hourly LASSO regressions, the standard benchmark of the price-forecasting literature) and a gradient-boosting model has a mean absolute error of 12.0 EUR/MWh over 2024-2025 out of sample, 44% of the error of the naive forecast (27.4 EUR/MWh). The average is significantly more accurate than each model alone (Diebold-Mariano, p < 0.001).
+- Errors are largest in the evening peak (18:00-20:00) and in sunny weekend hours when prices fall deeply negative; no model sees the deepest negative spikes coming.
 
 **v0.4: merit-order dispatch model**
 - A merit-order model of the German lignite, hard-coal and gas fleet, driven by monthly fuel and carbon prices from open sources (World Bank, ECB, EEX auctions), reproduces the hourly day-ahead price with a correlation of 0.71 to 0.74 (daily means 0.82 to 0.85) and a mean absolute error of 20 to 23 EUR/MWh. Two parameters are calibrated on 2023 only; 2024 and 2025 are out of sample, with errors of the same size as in the calibration year.
@@ -80,7 +84,27 @@ Method, findings with severity and recommendations: [reports/model_validation_re
 
 **Methods in short.** Black-76 with analytic Greeks; antithetic Monte Carlo; implied volatility by root finding; a two-factor arithmetic price model (Schwartz-Smith type split into a random-walk level and an AR(1) deviation, weekday effects) priced in closed form (Bachelier on the monthly average) and by simulation. VaR/ES by historical simulation, normal with EWMA volatility (RiskMetrics, lambda 0.94) and GARCH(1,1) with Student-t innovations (maximum likelihood, own implementation), on a 365-day rolling window. Backtests: Kupiec proportion of failures, Christoffersen independence and conditional coverage, Basel traffic light from binomial probabilities, and a bootstrap ES exceedance test.
 
-## v0.4: merit-order dispatch model
+## v0.5: day-ahead price forecasting
+
+![Example week](figures/forecast_example_week.png)
+
+| Model | MAE 2024 | MAE 2025 | MAE 2024-2025 | rMAE vs naive | RMSE 2024-2025 |
+|---|---|---|---|---|---|
+| Naive (d-1, or d-7 on Monday and weekends) | 27.3 | 27.5 | 27.4 | 1.00 | 43.2 |
+| LEAR, 364-day window | 13.1 | 12.9 | 13.0 | 0.48 | 23.9 |
+| LEAR, 728-day window | 14.6 | 12.0 | 13.3 | 0.49 | 24.5 |
+| LEAR, average of both windows | 13.4 | 12.1 | 12.8 | 0.47 | 23.7 |
+| Gradient boosting | 14.2 | 12.7 | 13.4 | 0.49 | 24.1 |
+| **LEAR + gradient boosting, average** | **12.4** | **11.5** | **12.0** | **0.44** | **22.6** |
+
+EUR/MWh; out of sample (each forecast uses only data up to the day before). The better calibration window changes with the regime (one year in 2024, two years in 2025), which is why averaging windows is robust. Diebold-Mariano tests on the daily sum of absolute errors (`results/forecast/dm_pvalues.csv`): the LEAR + boosting average beats every other model (p < 0.001); the LEAR window average beats boosting (p = 0.005); the 364-day window beats the 728-day window over the two years (p = 0.04), while boosting is not significantly different from either single-window LEAR model.
+
+![MAE by hour](figures/forecast_mae_by_hour.png)
+
+![Monthly MAE](figures/forecast_monthly_mae.png)
+
+**Method.** Data: day-ahead prices and the TSOs' day-ahead forecasts of load and of onshore wind, offshore wind and solar generation from SMARD (2021-2025), the last EEX EU-allowance auction price before the delivery day and the previous month's TTF gas price. Days are local with 24 hours (clock-change hours interpolated or averaged). LEAR: one LASSO per hour (penalty chosen by AIC) on 249 inputs: prices of d-1, d-2, d-3 and d-7, load and wind+solar forecasts for d, d-1 and d-7, weekday dummies, CO2 and gas; prices are standardised by median and MAD and transformed with asinh, which tames negative prices and spikes; recalibrated every 7 days on rolling windows of 364 and 728 days (the literature recalibrates daily; weekly keeps the run time at about 25 minutes). Gradient boosting: scikit-learn histogram gradient boosting on all hours with the same information plus summary features (yesterday's mean, minimum and maximum, residual-load forecast, renewable share), recalibrated monthly on 728 days. Note on timing: the TSOs publish their wind and solar day-ahead forecasts by 18:00 the day before, after the 12:00 auction; earlier forecasts exist but are not public, and the open benchmarks of the literature use the same series.
+
 
 ![Daily prices](figures/dispatch_daily_prices.png)
 
@@ -166,6 +190,7 @@ python -m deppa.run               # downloads 2023-2025 (cached), writes results
 python -m deppa.validate          # v0.2: floor valuation checks and VaR/ES backtests, writes results/validation/
 python -m deppa.storage_run       # v0.3: battery arbitrage 2023-2025 (about 8 minutes), writes results/storage/
 python -m deppa.dispatch_run      # v0.4: merit-order price model, calibrated on 2023, writes results/dispatch/
+python -m deppa.forecast_run      # v0.5: price forecasts 2024-2025 out of sample (about 25 minutes), writes results/forecast/
 pytest                            # offline tests on synthetic data
 ```
 
@@ -178,7 +203,7 @@ pytest                            # offline tests on synthetic data
 
 ## Roadmap
 
-- **v0.5**: price the margin better: an import supply curve from neighbouring zones, must-run bids below cost, daily gas prices and a unit-commitment variant (MILP with start-up costs and minimum load) for the low-price and scarcity hours.
-- **v0.6**: scenarios (CO2 price, gas price shock, renewable share, coal exit) and capture prices and battery revenues under each scenario.
+- **v0.8**: price the margin better: an import supply curve from neighbouring zones, must-run bids below cost, daily gas prices and a unit-commitment variant (MILP with start-up costs and minimum load) for the low-price and scarcity hours.
+- **v0.9**: scenarios (CO2 price, gas price shock, renewable share, coal exit) and capture prices and battery revenues under each scenario.
 - Battery follow-ups: scheduling under price uncertainty (stochastic programming, value of the stochastic solution and of perfect information), intraday revenue, capex and payback.
 - Validation follow-ups: volatility from EEX futures, seasonal filtered historical simulation for solar, stressed VaR.
