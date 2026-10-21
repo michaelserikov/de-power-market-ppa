@@ -434,3 +434,54 @@ def res_errors(errs: pd.DataFrame, by_hour: pd.DataFrame, out: Path) -> None:
     fig.tight_layout()
     fig.savefig(out, dpi=160)
     plt.close(fig)
+
+
+# --- v0.8: battery under uncertainty --------------------------------------------------------------
+
+LAM_COLOR = {0.0: "#9ec5f0", 0.25: "#5c9de3", 0.5: "#2a78d6", 0.75: "#1d5aa8", 1.0: "#123f7a"}
+
+
+def risk_frontier(summ: pd.DataFrame, out: Path) -> None:
+    """Expected profit against CVaR (mean of the worst 10% scenarios), per risk weight."""
+    fig, ax = plt.subplots(figsize=(8, 4.2))
+    ax.plot(summ["cvar_per_day"], summ["expected_per_day"], color=INK2, linewidth=1.2, zorder=1)
+    for _, r in summ.iterrows():
+        ax.scatter(r["cvar_per_day"], r["expected_per_day"], s=60, color=LAM_COLOR.get(r["lam"], INK2), zorder=3,
+                   edgecolor=SURFACE)
+        ax.annotate(f"lambda = {r['lam']:g}", (r["cvar_per_day"], r["expected_per_day"]), xytext=(6, 4),
+                    textcoords="offset points", fontsize=8, color=INK2)
+    _style(ax, "Risk-return frontier of the battery schedule (mean over days)", "expected profit, EUR per day")
+    ax.set_xlabel("CVaR 10%: mean profit of the worst 10% of scenarios, EUR per day", color=INK2)
+    fig.tight_layout()
+    fig.savefig(out, dpi=160)
+    plt.close(fig)
+
+
+def evpi_vss(summ: pd.DataFrame, out: Path) -> None:
+    fig, ax = plt.subplots(figsize=(8, 4.2))
+    x = np.arange(len(summ))
+    ax.bar(x - 0.18, summ["evpi_per_day"], 0.34, color="#2a78d6", label="EVPI: value of perfect information")
+    ax.bar(x + 0.18, summ["vss_per_day"], 0.34, color="#eb6834", label="VSS: value of the stochastic solution")
+    ax.set_xticks(x, [f"lambda = {l:g}" for l in summ["lam"]])
+    _style(ax, "Value of information and of stochastic scheduling, by risk weight", "EUR per day (1 MW / 2 MWh)")
+    ax.legend(frameon=False, loc="upper left", fontsize=8, labelcolor=INK)
+    fig.tight_layout()
+    fig.savefig(out, dpi=160)
+    plt.close(fig)
+
+
+def realised_tail(df: pd.DataFrame, lams, out: Path) -> None:
+    """Lower tail of realised daily profits (actual prices) for each risk weight."""
+    fig, ax = plt.subplots(figsize=(8, 4.2))
+    for lam in lams:
+        v = np.sort(df[f"realised_{lam}"].to_numpy())
+        k = max(1, int(0.2 * len(v)))
+        ax.plot(np.arange(1, k + 1) / len(v), v[:k], color=LAM_COLOR.get(lam, INK2), linewidth=2, label=f"lambda = {lam:g}")
+    ax.axhline(0, color=INK2, linewidth=0.8)
+    ax.xaxis.set_major_formatter(matplotlib.ticker.PercentFormatter(1.0))
+    _style(ax, "Worst 20% of days at actual prices, by risk weight", "realised profit, EUR per day")
+    ax.set_xlabel("share of days (sorted from worst)", color=INK2)
+    ax.legend(frameon=False, loc="lower right", fontsize=8, labelcolor=INK)
+    fig.tight_layout()
+    fig.savefig(out, dpi=160)
+    plt.close(fig)

@@ -1,4 +1,4 @@
-# German power market: price forecasting, merit-order price model, capture prices, PPA valuation, model validation and battery arbitrage (v0.7)
+# German power market: price forecasting, merit-order price model, capture prices, PPA valuation, model validation and battery arbitrage (v0.8)
 
 [![tests](https://github.com/michaelserikov/de-power-market-ppa/actions/workflows/tests.yml/badge.svg)](https://github.com/michaelserikov/de-power-market-ppa/actions/workflows/tests.yml)
 
@@ -14,6 +14,11 @@ What is a MWh of wind or solar power actually worth on the German day-ahead mark
 - A Black-76 model for a 12-month PPA price floor (60 EUR/MWh on the monthly average price) was validated like a bank's front-office model: independent Monte Carlo replication (30 prices, all within 1.7 standard errors), analytic Greeks against finite differences (relative error 3e-8), a challenger model calibrated on daily prices and a sensitivity ladder.
 - Main valuation finding: the model ignores that the floor settles on a monthly average and overstates its value by 11.7% under its own assumptions. A two-factor challenger points the same way (Black-76 32% higher), but its level/noise split is not identified from three years of spot data, so the volatility input needs market data (EEX futures or options).
 - One-day VaR(99%) and ES(97.5%) of a PPA offtaker were backtested over 731 days (Kupiec, Christoffersen, Basel traffic light, ES exceedance test). Normal-EWMA and GARCH(1,1)-t models land in the red zone (19-30 exceptions against 7.3 expected), with solar exceptions almost all on weekends and holidays; historical simulation passes coverage, and conditioning it on the day type fixes the wind position but not solar.
+
+**v0.8: battery scheduling under price uncertainty (stochastic programming, EVPI, VSS, CVaR)**
+- A battery that must fix tomorrow's schedule before the auction, facing 182 price scenarios (the forecast plus its past 24-hour error vectors), gains nothing from stochastic optimisation if it is risk-neutral: the value of the stochastic solution (VSS) is exactly zero, because profit is linear in prices and the mean-price schedule is optimal. The value of perfect information (EVPI) is about 27 EUR per day (around 10,000 EUR per MW and year within the scenario model).
+- Stochastic optimisation pays once risk matters. Weighting the expected profit against CVaR (the mean of the worst 10% of scenarios), VSS rises to 12 EUR per day at full risk aversion, and the risk-return frontier shows the trade: CVaR improves by 13% for 7% lower expected profit.
+- At actual prices (July 2024 to December 2025) a mild risk weight keeps the realised profit (69.7 vs 69.6 thousand EUR per MW and year) while cutting loss days from 8 to 5 and the worst day from -49 to -40 EUR; full risk aversion halves the worst day but costs 5% of profit, mostly by leaving the battery idle on about 6% of days.
 
 **v0.7: econometrics of fuel pass-through and of renewable forecast errors**
 - Monthly power, gas and carbon prices (2020-2025) are non-stationary but cointegrated (Engle-Granger p < 0.001, Johansen rank 1): in the long run the baseload price is about 4.0 + 1.59 x gas + 0.32 x CO2 (R2 0.95). The slopes are below those of a gas plant that always sets the price (about 2 and 0.4), as expected when renewables and coal set it in part of the hours.
@@ -93,6 +98,30 @@ All numbers are written by the pipeline to `results/` (`capture_prices_yearly.cs
 Method, findings with severity and recommendations: [reports/model_validation_report.md](reports/model_validation_report.md). Outputs: `results/validation/` (replication, Greeks, sensitivity, floor strip, VaR/ES forecasts, backtests, `summary.json`).
 
 **Methods in short.** Black-76 with analytic Greeks; antithetic Monte Carlo; implied volatility by root finding; a two-factor arithmetic price model (Schwartz-Smith type split into a random-walk level and an AR(1) deviation, weekday effects) priced in closed form (Bachelier on the monthly average) and by simulation. VaR/ES by historical simulation, normal with EWMA volatility (RiskMetrics, lambda 0.94) and GARCH(1,1) with Student-t innovations (maximum likelihood, own implementation), on a 365-day rolling window. Backtests: Kupiec proportion of failures, Christoffersen independence and conditional coverage, Basel traffic light from binomial probabilities, and a bootstrap ES exceedance test.
+
+## v0.8: battery scheduling under price uncertainty
+
+![EVPI and VSS](figures/stochastic_evpi_vss.png)
+
+| Risk weight lambda | WS | RP | EEV | EVPI | VSS | Expected profit | CVaR 10% | Realised profit, EUR per MW and year | Worst day | Loss days | MWh discharged per day |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| 0 (risk-neutral) | 214.9 | 187.5 | 187.5 | 27.4 | 0.0 | 187.5 | 91.1 | 69,557 | -49 | 8 | 3.21 |
+| 0.25 | 193.7 | 164.0 | 163.4 | 29.7 | 0.6 | 186.8 | 95.7 | 69,718 | -40 | 5 | 3.08 |
+| 0.5 | 172.6 | 142.0 | 139.3 | 30.5 | 2.7 | 184.4 | 99.6 | 69,228 | -36 | 5 | 2.92 |
+| 0.75 | 151.4 | 121.7 | 115.2 | 29.7 | 6.4 | 180.0 | 102.2 | 67,826 | -29 | 4 | 2.72 |
+| 1 (CVaR only) | 130.2 | 102.9 | 91.1 | 27.2 | 11.8 | 174.8 | 102.9 | 66,204 | -26 | 3 | 2.57 |
+
+EUR per day unless stated, mean over 549 days (1 July 2024 to 31 December 2025), 1 MW / 2 MWh battery. WS, RP, EEV, EVPI and VSS are in units of the risk-weighted objective (1 - lambda) E[profit] + lambda CVaR. Perfect knowledge of each day's prices would have earned 74,042 EUR per MW and year.
+
+![Frontier](figures/stochastic_frontier.png)
+
+![Realised tail](figures/stochastic_realised_tail.png)
+
+The ex-ante EVPI (27 EUR per day, about 10,000 EUR per MW and year) is larger than the realised gap between the risk-neutral schedule and perfect foresight (12 EUR per day, 4,500 EUR per MW and year): the scenario set, built from half a year of past errors, is wider than the errors actually made in this period.
+
+**Method.** Two-stage view of one day: the schedule (hourly charge and discharge, 1 MW, 2 MWh, 88% round trip, 10 EUR/MWh degradation, half full at midnight, no simultaneous charge and discharge) is chosen before prices are known and evaluated in 182 scenarios = the v0.5 LEAR + boosting forecast for the day plus the 24-hour error vectors of that forecast on each of the previous 182 days. Objective (1 - lambda) E[profit] + lambda CVaR_10%[profit], with CVaR linearised after Rockafellar and Uryasev, solved as a mixed-integer linear program (SciPy/HiGHS) per day. WS solves each scenario with perfect knowledge; EEV evaluates the schedule optimised on the mean scenario; EVPI = WS - RP and VSS = RP - EEV (Birge and Louveaux). The tests check VSS = 0 for lambda = 0 and WS >= RP >= EEV. Realised profit settles each schedule at the actual prices.
+
+**Limitations.** The battery commits a fixed schedule; real day-ahead bids can be price-dependent, which itself hedges part of the risk, and intraday re-trading would add recourse that is not modelled here. Scenarios come from past forecast errors, not from a fitted probabilistic model, and are equally weighted.
 
 ## v0.7: econometrics of fuel pass-through and of renewable forecast errors
 
@@ -262,6 +291,7 @@ python -m deppa.dispatch_run      # v0.4: merit-order price model, calibrated on
 python -m deppa.forecast_run      # v0.5: price forecasts 2024-2025 out of sample (about 25 minutes), writes results/forecast/
 python -m deppa.probabilistic_run # v0.6: quantile forecasts and battery value of forecasts, writes results/probabilistic/
 python -m deppa.econometrics_run  # v0.7: unit roots, cointegration, VAR, renewable forecast errors, writes results/econometrics/
+python -m deppa.stochastic_run    # v0.8: battery under price uncertainty, EVPI, VSS, CVaR (parallel, ~10 minutes), writes results/stochastic/
 pytest                            # offline tests on synthetic data
 ```
 
@@ -274,7 +304,7 @@ pytest                            # offline tests on synthetic data
 
 ## Roadmap
 
-- **v0.8**: price the margin better: an import supply curve from neighbouring zones, must-run bids below cost, daily gas prices and a unit-commitment variant (MILP with start-up costs and minimum load) for the low-price and scarcity hours.
-- **v0.9**: scenarios (CO2 price, gas price shock, renewable share, coal exit) and capture prices and battery revenues under each scenario.
-- Battery follow-ups: scheduling under price uncertainty (stochastic programming, value of the stochastic solution and of perfect information), intraday revenue, capex and payback.
+- **v0.9**: price the margin better: an import supply curve from neighbouring zones, must-run bids below cost, daily gas prices and a unit-commitment variant (MILP with start-up costs and minimum load) for the low-price and scarcity hours.
+- **v1.0**: scenarios (CO2 price, gas price shock, renewable share, coal exit) and capture prices and battery revenues under each scenario.
+- Battery follow-ups: price-dependent bids and intraday recourse, a multi-day horizon, capex and payback.
 - Validation follow-ups: volatility from EEX futures, seasonal filtered historical simulation for solar, stressed VaR.

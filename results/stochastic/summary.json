@@ -1,0 +1,88 @@
+{
+  "period": [
+    "2024-07-01",
+    "2025-12-31"
+  ],
+  "days": 549,
+  "alpha": 0.1,
+  "scenarios": 182,
+  "perfect_profit_per_year": 74042.4199506063,
+  "realised_ev_per_year": 69557.13823933795,
+  "by_lambda": [
+    {
+      "lam": 0.0,
+      "ws": 214.935,
+      "rp": 187.522,
+      "eev": 187.522,
+      "evpi_per_day": 27.413,
+      "vss_per_day": 0.0,
+      "expected_per_day": 187.522,
+      "cvar_per_day": 91.136,
+      "realised_per_year": 69557.138,
+      "realised_p05_day": 13.347,
+      "realised_worst_day": -49.486,
+      "loss_days": 8,
+      "mwh_discharged_per_day": 3.213
+    },
+    {
+      "lam": 0.25,
+      "ws": 193.748,
+      "rp": 164.04,
+      "eev": 163.426,
+      "evpi_per_day": 29.708,
+      "vss_per_day": 0.614,
+      "expected_per_day": 186.836,
+      "cvar_per_day": 95.652,
+      "realised_per_year": 69717.519,
+      "realised_p05_day": 14.0,
+      "realised_worst_day": -40.184,
+      "loss_days": 5,
+      "mwh_discharged_per_day": 3.079
+    },
+    {
+      "lam": 0.5,
+      "ws": 172.561,
+      "rp": 142.016,
+      "eev": 139.329,
+      "evpi_per_day": 30.545,
+      "vss_per_day": 2.687,
+      "expected_per_day": 184.416,
+      "cvar_per_day": 99.616,
+      "realised_per_year": 69228.16,
+      "realised_p05_day": 17.007,
+      "realised_worst_day": -36.405,
+      "loss_days": 5,
+      "mwh_discharged_per_day": 2.916
+    },
+    {
+      "lam": 0.75,
+      "ws": 151.374,
+      "rp": 121.669,
+      "eev": 115.233,
+      "evpi_per_day": 29.704,
+      "vss_per_day": 6.437,
+      "expected_per_day": 179.99,
+      "cvar_per_day": 102.229,
+      "realised_per_year": 67825.581,
+      "realised_p05_day": 4.594,
+      "realised_worst_day": -29.052,
+      "loss_days": 4,
+      "mwh_discharged_per_day": 2.724
+    },
+    {
+      "lam": 1.0,
+      "ws": 130.186,
+      "rp": 102.949,
+      "eev": 91.136,
+      "evpi_per_day": 27.237,
+      "vss_per_day": 11.813,
+      "expected_per_day": 174.836,
+      "cvar_per_day": 102.949,
+      "realised_per_year": 66204.104,
+      "realised_p05_day": 0.0,
+      "realised_worst_day": -25.69,
+      "loss_days": 3,
+      "mwh_discharged_per_day": 2.569
+    }
+  ]
+}
