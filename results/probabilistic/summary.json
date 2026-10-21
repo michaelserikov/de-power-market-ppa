@@ -1,0 +1,110 @@
+{
+  "prob_period": [
+    "2024-07-01",
+    "2025-12-31"
+  ],
+  "scores": [
+    {
+      "method": "qra",
+      "period": "2024 H2",
+      "pinball": 5.6776,
+      "coverage_80": 0.733,
+      "kupiec_p_80": 0.0,
+      "width_80": 30.6771,
+      "coverage_90": 0.8492,
+      "kupiec_p_90": 0.0,
+      "width_90": 43.9337
+    },
+    {
+      "method": "qra",
+      "period": "2025",
+      "pinball": 4.6585,
+      "coverage_80": 0.793,
+      "kupiec_p_80": 0.1047,
+      "width_80": 35.1567,
+      "coverage_90": 0.8881,
+      "kupiec_p_90": 0.0003,
+      "width_90": 52.1978
+    },
+    {
+      "method": "qra",
+      "period": "all",
+      "pinball": 5.0001,
+      "coverage_80": 0.7729,
+      "kupiec_p_80": 0.0,
+      "width_80": 33.6554,
+      "coverage_90": 0.8751,
+      "kupiec_p_90": 0.0,
+      "width_90": 49.4281
+    },
+    {
+      "method": "historical_errors",
+      "period": "2024 H2",
+      "pinball": 5.6151,
+      "coverage_80": 0.7627,
+      "kupiec_p_80": 0.0,
+      "width_80": 33.6177,
+      "coverage_90": 0.8653,
+      "kupiec_p_90": 0.0,
+      "width_90": 47.238
+    },
+    {
+      "method": "historical_errors",
+      "period": "2025",
+      "pinball": 4.5476,
+      "coverage_80": 0.7983,
+      "kupiec_p_80": 0.689,
+      "width_80": 35.2203,
+      "coverage_90": 0.892,
+      "kupiec_p_90": 0.0137,
+      "width_90": 50.1792
+    },
+    {
+      "method": "historical_errors",
+      "period": "all",
+      "pinball": 4.9054,
+      "coverage_80": 0.7864,
+      "kupiec_p_80": 0.0001,
+      "width_80": 34.6832,
+      "coverage_90": 0.883,
+      "kupiec_p_90": 0.0,
+      "width_90": 49.1934
+    }
+  ],
+  "battery_profit_eur_per_mw": {
+    "2024": {
+      "perfect": 63236.0,
+      "lear_gbm_avg": 59281.0,
+      "lear_avg": 58596.0,
+      "gbm": 58499.0,
+      "naive": 52114.0,
+      "yesterday": 48252.0
+    },
+    "2025": {
+      "perfect": 72290.0,
+      "lear_gbm_avg": 68969.0,
+      "lear_avg": 68218.0,
+      "gbm": 67652.0,
+      "naive": 61596.0,
+      "yesterday": 58161.0
+    }
+  },
+  "battery_capture": {
+    "2024": {
+      "perfect": 1.0,
+      "lear_gbm_avg": 0.9375,
+      "lear_avg": 0.9266,
+      "gbm": 0.9251,
+      "naive": 0.8241,
+      "yesterday": 0.763
+    },
+    "2025": {
+      "perfect": 1.0,
+      "lear_gbm_avg": 0.9541,
+      "lear_avg": 0.9437,
+      "gbm": 0.9358,
+      "naive": 0.8521,
+      "yesterday": 0.8045
+    }
+  }
+}

@@ -1,4 +1,4 @@
-# German power market: price forecasting, merit-order price model, capture prices, PPA valuation, model validation and battery arbitrage (v0.5)
+# German power market: price forecasting, merit-order price model, capture prices, PPA valuation, model validation and battery arbitrage (v0.6)
 
 What is a MWh of wind or solar power actually worth on the German day-ahead market, and what does that mean for a power purchase agreement (PPA)? This project answers that from hourly market data for 2023 to 2025 (bidding zone DE-LU, 26,304 hours, no gaps): capture prices and capture rates, the cost of negative prices, the fair strike of a pay-as-produced PPA, the shape cost of a baseload PPA and the month-to-month risk an offtaker carries.
 
@@ -12,6 +12,10 @@ What is a MWh of wind or solar power actually worth on the German day-ahead mark
 - A Black-76 model for a 12-month PPA price floor (60 EUR/MWh on the monthly average price) was validated like a bank's front-office model: independent Monte Carlo replication (30 prices, all within 1.7 standard errors), analytic Greeks against finite differences (relative error 3e-8), a challenger model calibrated on daily prices and a sensitivity ladder.
 - Main valuation finding: the model ignores that the floor settles on a monthly average and overstates its value by 11.7% under its own assumptions. A two-factor challenger points the same way (Black-76 32% higher), but its level/noise split is not identified from three years of spot data, so the volatility input needs market data (EEX futures or options).
 - One-day VaR(99%) and ES(97.5%) of a PPA offtaker were backtested over 731 days (Kupiec, Christoffersen, Basel traffic light, ES exceedance test). Normal-EWMA and GARCH(1,1)-t models land in the red zone (19-30 exceptions against 7.3 expected), with solar exceptions almost all on weekends and holidays; historical simulation passes coverage, and conditioning it on the day type fixes the wind position but not solar.
+
+**v0.6: probabilistic forecasts and what forecasts are worth**
+- A battery scheduled on the point forecast captures 94% (2024) and 95% (2025) of the profit it would make with perfect knowledge of the next day's prices, against 76-80% when it simply repeats yesterday's prices: in 2025 the forecast is worth about 10,800 EUR per MW of a 2-hour battery (69.0 vs 58.2 thousand EUR per MW).
+- Predictive intervals from quantile regression averaging (QRA) are slightly too narrow (the central 80% interval covers 77% of prices, the 90% interval 88%), and a simple benchmark that adds past errors of the same hour scores as well (pinball loss 4.9 vs 5.0); in 2025 the 80% intervals of both methods pass the Kupiec coverage test.
 
 **v0.5: day-ahead price forecasting**
 - Forecasting all 24 hourly prices of the next day with the information available the day before, an average of a LEAR model (hourly LASSO regressions, the standard benchmark of the price-forecasting literature) and a gradient-boosting model has a mean absolute error of 12.0 EUR/MWh over 2024-2025 out of sample, 44% of the error of the naive forecast (27.4 EUR/MWh). The average is significantly more accurate than each model alone (Diebold-Mariano, p < 0.001).
@@ -84,7 +88,33 @@ Method, findings with severity and recommendations: [reports/model_validation_re
 
 **Methods in short.** Black-76 with analytic Greeks; antithetic Monte Carlo; implied volatility by root finding; a two-factor arithmetic price model (Schwartz-Smith type split into a random-walk level and an AR(1) deviation, weekday effects) priced in closed form (Bachelier on the monthly average) and by simulation. VaR/ES by historical simulation, normal with EWMA volatility (RiskMetrics, lambda 0.94) and GARCH(1,1) with Student-t innovations (maximum likelihood, own implementation), on a 365-day rolling window. Backtests: Kupiec proportion of failures, Christoffersen independence and conditional coverage, Basel traffic light from binomial probabilities, and a bootstrap ES exceedance test.
 
-## v0.5: day-ahead price forecasting
+## v0.6: probabilistic forecasts and what forecasts are worth
+
+![Fan chart](figures/forecast_fan_chart.png)
+
+| Method (July 2024 to December 2025) | Pinball loss | 80% interval: coverage (Kupiec p) | 90% interval: coverage (Kupiec p) | Mean width of 80% interval |
+|---|---|---|---|---|
+| QRA on LEAR and gradient boosting | 5.00 | 77.3% (< 0.001) | 87.5% (< 0.001) | 33.7 |
+| Point forecast + past errors of the same hour | 4.91 | 78.6% (< 0.001) | 88.3% (< 0.001) | 34.7 |
+| 2025 only: QRA / past errors | 4.66 / 4.55 | 79.3% (0.10) / 79.8% (0.69) | 88.8% (< 0.001) / 89.2% (0.01) | 35.2 / 35.2 |
+
+Pinball loss in EUR/MWh averaged over the 5%, 10%, ..., 95% quantiles (twice it approximates the CRPS). The second half of 2024 is the hardest period for both methods; the miss rates are tested with the Kupiec test of v0.2.
+
+![Reliability](figures/forecast_reliability.png)
+
+![Battery value of forecasts](figures/forecast_battery_value.png)
+
+| 2-hour battery, thousand EUR per MW (share of perfect) | 2024 | 2025 |
+|---|---|---|
+| Perfect knowledge of the day's prices | 63.2 | 72.3 |
+| Scheduled on LEAR + boosting forecast | 59.3 (94%) | 69.0 (95%) |
+| Scheduled on LEAR | 58.6 (93%) | 68.2 (94%) |
+| Scheduled on gradient boosting | 58.5 (93%) | 67.7 (94%) |
+| Scheduled on the naive forecast | 52.1 (82%) | 61.6 (85%) |
+| Scheduled on yesterday's prices | 48.3 (76%) | 58.2 (80%) |
+
+**Method.** QRA (Nowotarski and Weron): for each of 19 quantile levels a linear quantile regression of the price on the LEAR and boosting point forecasts, fitted on the previous 182 days (pooled over hours) and recalibrated monthly; crossing quantiles are sorted. Benchmark: the LEAR + boosting point forecast plus the empirical quantiles of its errors in the same hour over the previous 182 days. Battery: the v0.3 model (1 MW, 2 MWh, 88% round trip, 10 EUR/MWh degradation) schedules each day on a forecast and is settled at actual prices.
+
 
 ![Example week](figures/forecast_example_week.png)
 
@@ -191,6 +221,7 @@ python -m deppa.validate          # v0.2: floor valuation checks and VaR/ES back
 python -m deppa.storage_run       # v0.3: battery arbitrage 2023-2025 (about 8 minutes), writes results/storage/
 python -m deppa.dispatch_run      # v0.4: merit-order price model, calibrated on 2023, writes results/dispatch/
 python -m deppa.forecast_run      # v0.5: price forecasts 2024-2025 out of sample (about 25 minutes), writes results/forecast/
+python -m deppa.probabilistic_run # v0.6: quantile forecasts and battery value of forecasts, writes results/probabilistic/
 pytest                            # offline tests on synthetic data
 ```
 
