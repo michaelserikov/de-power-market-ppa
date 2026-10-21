@@ -1,6 +1,6 @@
 [project]
 name = "deppa"
-version = "0.6.0"
+version = "0.7.0"
 description = "German day-ahead power market: merit-order price model, capture prices, PPA valuation, market risk, model validation and battery arbitrage from SMARD data"
 requires-python = ">=3.11"
 dependencies = [
@@ -13,6 +13,7 @@ dependencies = [
     "scipy>=1.13",
     "openpyxl>=3.1",
     "scikit-learn>=1.5",
+    "statsmodels>=0.14",
 ]
 
 [project.optional-dependencies]

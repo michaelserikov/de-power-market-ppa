@@ -1,4 +1,4 @@
-# German power market: price forecasting, merit-order price model, capture prices, PPA valuation, model validation and battery arbitrage (v0.6)
+# German power market: price forecasting, merit-order price model, capture prices, PPA valuation, model validation and battery arbitrage (v0.7)
 
 What is a MWh of wind or solar power actually worth on the German day-ahead market, and what does that mean for a power purchase agreement (PPA)? This project answers that from hourly market data for 2023 to 2025 (bidding zone DE-LU, 26,304 hours, no gaps): capture prices and capture rates, the cost of negative prices, the fair strike of a pay-as-produced PPA, the shape cost of a baseload PPA and the month-to-month risk an offtaker carries.
 
@@ -12,6 +12,10 @@ What is a MWh of wind or solar power actually worth on the German day-ahead mark
 - A Black-76 model for a 12-month PPA price floor (60 EUR/MWh on the monthly average price) was validated like a bank's front-office model: independent Monte Carlo replication (30 prices, all within 1.7 standard errors), analytic Greeks against finite differences (relative error 3e-8), a challenger model calibrated on daily prices and a sensitivity ladder.
 - Main valuation finding: the model ignores that the floor settles on a monthly average and overstates its value by 11.7% under its own assumptions. A two-factor challenger points the same way (Black-76 32% higher), but its level/noise split is not identified from three years of spot data, so the volatility input needs market data (EEX futures or options).
 - One-day VaR(99%) and ES(97.5%) of a PPA offtaker were backtested over 731 days (Kupiec, Christoffersen, Basel traffic light, ES exceedance test). Normal-EWMA and GARCH(1,1)-t models land in the red zone (19-30 exceptions against 7.3 expected), with solar exceptions almost all on weekends and holidays; historical simulation passes coverage, and conditioning it on the day type fixes the wind position but not solar.
+
+**v0.7: econometrics of fuel pass-through and of renewable forecast errors**
+- Monthly power, gas and carbon prices (2020-2025) are non-stationary but cointegrated (Engle-Granger p < 0.001, Johansen rank 1): in the long run the baseload price is about 4.0 + 1.59 x gas + 0.32 x CO2 (R2 0.95). The slopes are below those of a gas plant that always sets the price (about 2 and 0.4), as expected when renewables and coal set it in part of the hours.
+- The TSOs' day-ahead wind and solar forecasts miss by 1.36 GW on average in 2019 and 1.70 GW in 2025 as capacity grows, while the price has become three times more sensitive to residual load (about 1.1 to 3.2 EUR/MWh per GW): the price equivalent of forecast errors rose from about 1.5 to 5.4 EUR/MWh.
 
 **v0.6: probabilistic forecasts and what forecasts are worth**
 - A battery scheduled on the point forecast captures 94% (2024) and 95% (2025) of the profit it would make with perfect knowledge of the next day's prices, against 76-80% when it simply repeats yesterday's prices: in 2025 the forecast is worth about 10,800 EUR per MW of a 2-hour battery (69.0 vs 58.2 thousand EUR per MW).
@@ -88,7 +92,40 @@ Method, findings with severity and recommendations: [reports/model_validation_re
 
 **Methods in short.** Black-76 with analytic Greeks; antithetic Monte Carlo; implied volatility by root finding; a two-factor arithmetic price model (Schwartz-Smith type split into a random-walk level and an AR(1) deviation, weekday effects) priced in closed form (Bachelier on the monthly average) and by simulation. VaR/ES by historical simulation, normal with EWMA volatility (RiskMetrics, lambda 0.94) and GARCH(1,1) with Student-t innovations (maximum likelihood, own implementation), on a 365-day rolling window. Backtests: Kupiec proportion of failures, Christoffersen independence and conditional coverage, Basel traffic light from binomial probabilities, and a bootstrap ES exceedance test.
 
-## v0.6: probabilistic forecasts and what forecasts are worth
+## v0.7: econometrics of fuel pass-through and of renewable forecast errors
+
+![Pass-through](figures/econometrics_passthrough.png)
+
+| Test (monthly, Jan 2020 to Dec 2025, 72 months) | Power | Gas | CO2 |
+|---|---|---|---|
+| ADF p, level (null: unit root) | 0.31 | 0.36 | 0.44 |
+| ADF p, first difference | < 0.001 | < 0.001 | < 0.001 |
+| KPSS p, level (null: stationary) | > 0.10 | > 0.10 | 0.01 |
+
+The ADF tests do not reject a unit root in levels but reject it in differences; KPSS rejects stationarity only for CO2, so the evidence for power and gas rests on ADF, with the low power of 72 months in mind.
+
+| Long-run relation power = a + b gas + c CO2 | a | b (gas) | c (CO2) | R2 | Engle-Granger p | Johansen rank (95%) |
+|---|---|---|---|---|---|---|
+| 2020-2025 | 4.0 | 1.59 (0.09) | 0.32 (0.10) | 0.95 | < 0.001 | 1 |
+| 2023-2025 | -15.5 | 1.42 (0.35) | 0.68 (0.20) | 0.67 | 0.03 | 0 |
+
+HAC standard errors in brackets. A gas plant at the margin in every hour would give b = 1/efficiency (about 2.0 at 50%) and c = emission factor/efficiency (about 0.40): the estimates sit below, consistent with gas setting the price in only part of the hours. After the crisis the gas slope is less precise and carbon matters more, and with 36 months the Johansen test no longer finds a cointegrating relation. A VAR(1) in monthly log changes (lag chosen by AIC): carbon Granger-causes power (p = 0.02), gas at the 10% level (p = 0.07); a gas-price shock raises the power price within one month.
+
+![Forecast errors](figures/res_forecast_errors.png)
+
+| Year | Wind forecast MAE, GW (% of mean output) | Solar forecast MAE, GW (%) | Price slope, EUR/MWh per GW of residual load | Price equivalent of wind+solar error, EUR/MWh |
+|---|---|---|---|---|
+| 2019 | 1.22 (8.6%) | 0.33 (7.0%) | 1.1 | 1.5 |
+| 2021 | 1.17 (9.0%) | 0.37 (7.1%) | 3.1 | 4.0 |
+| 2022 | 1.22 (8.5%) | 0.43 (6.7%) | 7.1 | 10.0 |
+| 2023 | 1.39 (8.5%) | 0.44 (6.9%) | 3.0 | 4.7 |
+| 2024 | 1.39 (8.8%) | 0.57 (7.9%) | 3.0 | 4.9 |
+| 2025 | 1.38 (9.1%) | 0.68 (8.0%) | 3.2 | 5.4 |
+
+Wind errors grow through the day (1.1 GW at night to 1.55 GW in the evening) because the forecast horizon gets longer; solar errors peak at noon.
+
+**Method.** Monthly means of the hourly day-ahead price; TTF gas and EUA prices as in v0.4. Unit roots: ADF (lag by AIC) and KPSS (statsmodels, whose KPSS p-values are bounded at 0.01 and 0.10). Long run: OLS in levels with HAC errors (3 lags), Engle-Granger and Johansen (constant, one lagged difference). VAR in log differences, lag by AIC up to 4, orthogonalised impulse responses. Forecast errors: hourly TSO day-ahead forecast minus actual generation. Price slope: OLS of the hourly price on the residual-load forecast (load minus wind and solar forecasts) with month fixed effects and HAC errors, per year; the price equivalent multiplies the mean absolute wind+solar error by this slope. It is a sensitivity, not the cost actually paid, which would need intraday and imbalance prices.
+
 
 ![Fan chart](figures/forecast_fan_chart.png)
 
@@ -222,6 +259,7 @@ python -m deppa.storage_run       # v0.3: battery arbitrage 2023-2025 (about 8 m
 python -m deppa.dispatch_run      # v0.4: merit-order price model, calibrated on 2023, writes results/dispatch/
 python -m deppa.forecast_run      # v0.5: price forecasts 2024-2025 out of sample (about 25 minutes), writes results/forecast/
 python -m deppa.probabilistic_run # v0.6: quantile forecasts and battery value of forecasts, writes results/probabilistic/
+python -m deppa.econometrics_run  # v0.7: unit roots, cointegration, VAR, renewable forecast errors, writes results/econometrics/
 pytest                            # offline tests on synthetic data
 ```
 

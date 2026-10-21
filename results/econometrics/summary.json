@@ -1,0 +1,297 @@
+{
+  "monthly_period": [
+    "2020-01",
+    "2025-12"
+  ],
+  "months": 72,
+  "unit_roots": [
+    {
+      "series": "power",
+      "form": "level",
+      "adf_p": 0.3135,
+      "kpss_p": 0.1
+    },
+    {
+      "series": "power",
+      "form": "difference",
+      "adf_p": 0.0,
+      "kpss_p": 0.1
+    },
+    {
+      "series": "gas",
+      "form": "level",
+      "adf_p": 0.3602,
+      "kpss_p": 0.1
+    },
+    {
+      "series": "gas",
+      "form": "difference",
+      "adf_p": 0.0,
+      "kpss_p": 0.1
+    },
+    {
+      "series": "co2",
+      "form": "level",
+      "adf_p": 0.4401,
+      "kpss_p": 0.0129
+    },
+    {
+      "series": "co2",
+      "form": "difference",
+      "adf_p": 0.0,
+      "kpss_p": 0.1
+    }
+  ],
+  "long_run_2020_2025": {
+    "const": 4.006345020262378,
+    "b_gas": 1.5934054656308545,
+    "c_co2": 0.3182348672964345,
+    "se_gas": 0.09295402282733933,
+    "se_co2": 0.10312019347729355,
+    "r2": 0.9464611087349882,
+    "engle_granger_stat": -6.841421904175486,
+    "engle_granger_p": 9.30034558935494e-08,
+    "johansen_trace": [
+      61.938,
+      9.908,
+      3.112
+    ],
+    "johansen_crit_95": [
+      29.796,
+      15.494,
+      3.842
+    ],
+    "johansen_rank_95": 1
+  },
+  "long_run_2023_2025": {
+    "const": -15.510201622344539,
+    "b_gas": 1.4203790326832983,
+    "c_co2": 0.6779568953704709,
+    "se_gas": 0.34955389114875884,
+    "se_co2": 0.19526640681354415,
+    "r2": 0.6699157180664763,
+    "engle_granger_stat": -3.9619736329744457,
+    "engle_granger_p": 0.02747018444928979,
+    "johansen_trace": [
+      28.67,
+      7.392,
+      1.276
+    ],
+    "johansen_crit_95": [
+      29.796,
+      15.494,
+      3.842
+    ],
+    "johansen_rank_95": 0
+  },
+  "var": {
+    "lag_order": 1,
+    "granger_p_into_power": {
+      "gas": 0.07455996570566643,
+      "co2": 0.018209785392823034
+    },
+    "irf_power_to_shock": {
+      "power": [
+        0.238,
+        -0.029,
+        0.0242,
+        -0.0059,
+        0.0024,
+        -0.0009,
+        0.0003
+      ],
+      "gas": [
+        0.0,
+        0.05,
+        -0.008,
+        0.0041,
+        -0.0016,
+        0.0004,
+        -0.0002
+      ],
+      "co2": [
+        0.0,
+        0.0685,
+        -0.0028,
+        0.0066,
+        -0.0012,
+        0.0006,
+        -0.0002
+      ]
+    }
+  },
+  "res_forecast_errors": [
+    {
+      "year": 2019,
+      "tech": "wind",
+      "bias_mw": -159.5741,
+      "mae_mw": 1223.8087,
+      "mean_output_mw": 14200.2017,
+      "nmae": 0.0862
+    },
+    {
+      "year": 2019,
+      "tech": "solar",
+      "bias_mw": -30.288,
+      "mae_mw": 334.8641,
+      "mean_output_mw": 4775.3883,
+      "nmae": 0.0701
+    },
+    {
+      "year": 2020,
+      "tech": "wind",
+      "bias_mw": -75.3658,
+      "mae_mw": 1254.3616,
+      "mean_output_mw": 14834.242,
+      "nmae": 0.0846
+    },
+    {
+      "year": 2020,
+      "tech": "solar",
+      "bias_mw": -8.0791,
+      "mae_mw": 345.884,
+      "mean_output_mw": 5229.6442,
+      "nmae": 0.0661
+    },
+    {
+      "year": 2021,
+      "tech": "wind",
+      "bias_mw": -64.4248,
+      "mae_mw": 1165.5633,
+      "mean_output_mw": 13000.4018,
+      "nmae": 0.0897
+    },
+    {
+      "year": 2021,
+      "tech": "solar",
+      "bias_mw": 31.3285,
+      "mae_mw": 374.7437,
+      "mean_output_mw": 5299.0529,
+      "nmae": 0.0707
+    },
+    {
+      "year": 2022,
+      "tech": "wind",
+      "bias_mw": -209.6982,
+      "mae_mw": 1219.0633,
+      "mean_output_mw": 14388.2402,
+      "nmae": 0.0847
+    },
+    {
+      "year": 2022,
+      "tech": "solar",
+      "bias_mw": -25.2362,
+      "mae_mw": 426.8386,
+      "mean_output_mw": 6391.2817,
+      "nmae": 0.0668
+    },
+    {
+      "year": 2023,
+      "tech": "wind",
+      "bias_mw": -90.6768,
+      "mae_mw": 1385.5814,
+      "mean_output_mw": 16325.9174,
+      "nmae": 0.0849
+    },
+    {
+      "year": 2023,
+      "tech": "solar",
+      "bias_mw": 16.6774,
+      "mae_mw": 439.4117,
+      "mean_output_mw": 6369.724,
+      "nmae": 0.069
+    },
+    {
+      "year": 2024,
+      "tech": "wind",
+      "bias_mw": 22.5989,
+      "mae_mw": 1385.8166,
+      "mean_output_mw": 15789.4113,
+      "nmae": 0.0878
+    },
+    {
+      "year": 2024,
+      "tech": "solar",
+      "bias_mw": 122.4542,
+      "mae_mw": 572.8858,
+      "mean_output_mw": 7222.6893,
+      "nmae": 0.0793
+    },
+    {
+      "year": 2025,
+      "tech": "wind",
+      "bias_mw": -189.5909,
+      "mae_mw": 1378.6527,
+      "mean_output_mw": 15231.5376,
+      "nmae": 0.0905
+    },
+    {
+      "year": 2025,
+      "tech": "solar",
+      "bias_mw": -14.4708,
+      "mae_mw": 675.1318,
+      "mean_output_mw": 8472.4453,
+      "nmae": 0.0797
+    }
+  ],
+  "price_slope_by_year": {
+    "2019": {
+      "slope_eur_mwh_per_gw": 1.1139140001456858,
+      "se": 0.04287746543669047
+    },
+    "2020": {
+      "slope_eur_mwh_per_gw": 1.0738387071830673,
+      "se": 0.031848095963309446
+    },
+    "2021": {
+      "slope_eur_mwh_per_gw": 3.0622165582429632,
+      "se": 0.1721076500720676
+    },
+    "2022": {
+      "slope_eur_mwh_per_gw": 7.088564567976544,
+      "se": 0.2041210250025276
+    },
+    "2023": {
+      "slope_eur_mwh_per_gw": 3.0067267073095465,
+      "se": 0.06807465791334344
+    },
+    "2024": {
+      "slope_eur_mwh_per_gw": 2.954730972680223,
+      "se": 0.1299450223402127
+    },
+    "2025": {
+      "slope_eur_mwh_per_gw": 3.189677320798968,
+      "se": 0.0647252424218174
+    }
+  },
+  "price_equivalent_of_res_errors": {
+    "2019": {
+      "res_error_mae_gw": 1.3585380707762555,
+      "price_equivalent_eur_mwh": 1.5132945767685815
+    },
+    "2020": {
+      "res_error_mae_gw": 1.3663106215846994,
+      "price_equivalent_eur_mwh": 1.4671972314930066
+    },
+    "2021": {
+      "res_error_mae_gw": 1.305557705479452,
+      "price_equivalent_eur_mwh": 3.9979004234608677
+    },
+    "2022": {
+      "res_error_mae_gw": 1.4070507134703196,
+      "price_equivalent_eur_mwh": 9.973969832851823
+    },
+    "2023": {
+      "res_error_mae_gw": 1.5653701621189635,
+      "price_equivalent_eur_mwh": 4.706640273268563
+    },
+    "2024": {
+      "res_error_mae_gw": 1.6587166970283502,
+      "price_equivalent_eur_mwh": 4.901061599611504
+    },
+    "2025": {
+      "res_error_mae_gw": 1.6979630220344788,
+      "price_equivalent_eur_mwh": 5.415954142938655
+    }
+  }
+}
