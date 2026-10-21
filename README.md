@@ -1,5 +1,7 @@
 # German power market: price forecasting, merit-order price model, capture prices, PPA valuation, model validation and battery arbitrage (v0.7)
 
+[![tests](https://github.com/michaelserikov/de-power-market-ppa/actions/workflows/tests.yml/badge.svg)](https://github.com/michaelserikov/de-power-market-ppa/actions/workflows/tests.yml)
+
 What is a MWh of wind or solar power actually worth on the German day-ahead market, and what does that mean for a power purchase agreement (PPA)? This project answers that from hourly market data for 2023 to 2025 (bidding zone DE-LU, 26,304 hours, no gaps): capture prices and capture rates, the cost of negative prices, the fair strike of a pay-as-produced PPA, the shape cost of a baseload PPA and the month-to-month risk an offtaker carries.
 
 **Main findings**
